@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amenities — Mandarin Orchid Resort</title>
+  <meta name="description" content="Discover the full range of amenities at Mandarin Orchid Resort — Wi-Fi, steam & sauna, mini gym, private gardens, room service, and more in Kotagiri, Tamil Nadu." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .amenity-full-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; }
+    .amenity-full-card { background: var(--white); padding: 56px 44px; position: relative; overflow: hidden; transition: background var(--t-med); }
+    .amenity-full-card::after { content:''; position:absolute; bottom:0; left:0; width:100%; height:3px; background:var(--gold); transform:scaleX(0); transform-origin:left; transition:transform var(--t-med); }
+    .amenity-full-card:hover { background: var(--charcoal); }
+    .amenity-full-card:hover::after { transform: scaleX(1); }
+    .amenity-full-card:hover .af-icon { color: var(--gold); }
+    .amenity-full-card:hover .af-name { color: var(--white); }
+    .amenity-full-card:hover .af-desc { color: rgba(255,255,255,0.5); }
+    .af-icon { width:52px;height:52px;color:var(--gold);margin-bottom:28px;transition:color var(--t-med); }
+    .af-name { font-family:var(--font-serif);font-size:24px;font-weight:400;color:var(--charcoal);margin-bottom:12px;transition:color var(--t-med); }
+    .af-desc { font-size:12px;color:var(--warm-grey);line-height:1.9;transition:color var(--t-med); }
+    @media(max-width:900px){ .amenity-full-grid{grid-template-columns:1fr 1fr;} }
+    @media(max-width:600px){ .amenity-full-grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body class="loading">
+<div class="cursor-outer"></div><div class="cursor-inner"></div>
+<div class="page-loader"><div class="loader-logo">Mandarin Orchid</div><div class="loader-line"></div><div class="loader-sub">Kotagiri &nbsp;·&nbsp; Tamil Nadu</div></div>
+<nav class="mobile-nav"><button class="mobile-nav-close"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="17" y2="17"/><line x1="17" y1="3" x2="3" y2="17"/></svg></button><a href="index.html" class="mobile-nav-link">Home</a><a href="aboutus.html" class="mobile-nav-link">About</a><a href="rooms.html" class="mobile-nav-link">Rooms</a><a href="amenities.html" class="mobile-nav-link">Amenities</a><a href="gallery.html" class="mobile-nav-link">Gallery</a><a href="attractions.html" class="mobile-nav-link">Attractions</a><a href="contactus.html" class="mobile-nav-link">Contact</a></nav>
+<div class="topbar"><div class="topbar-left"><a href="tel:+916369233305" class="topbar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 .18h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z"/></svg>+91 6369 233 305</a><a href="mailto:mandarinorchidnilgiries@gmail.com" class="topbar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Get in Touch</a></div><div class="topbar-right"><select class="lang-select"><option>English</option><option>தமிழ்</option><option>हिन्दी</option></select><a href="https://api.whatsapp.com/send?phone=916369233305&text=Hello%20Mandarin%20Orchid%20team.%0A%0AI%20would%20like%20to%20book%20a%20stay%20at%20your%20resort.%20Please%20let%20me%20know%20availability%2C%20best%20rates%2C%20and%20any%20recommendations%20for%20a%20tranquil%20stay%20in%20Kotagiri." target="_blank" class="btn-book-top">Book Now</a></div></div>
+<header class="site-nav"><div class="nav-inner"><nav class="nav-left"><a href="index.html" class="nav-link">Home</a><a href="aboutus.html" class="nav-link">About Us</a><a href="rooms.html" class="nav-link">Rooms</a></nav><a href="index.html" class="nav-logo"><svg class="nav-logo-icon" viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="29" stroke="#C4963C" stroke-width="0.5"/><path d="M30 10 C30 10 20 20 20 30 C20 40 30 45 30 45 C30 45 40 40 40 30 C40 20 30 10 30 10Z" fill="none" stroke="#C4963C" stroke-width="1"/><circle cx="30" cy="24" r="3" fill="#C4963C"/><path d="M30 24 L30 42" stroke="#C4963C" stroke-width="0.8"/><path d="M22 34 Q30 28 38 34" stroke="#C4963C" stroke-width="0.8" fill="none"/></svg><div class="nav-logo-text"><span class="nav-logo-name">Mandarin</span><span class="nav-logo-sub">Orchid Resort</span></div></a><nav class="nav-right"><a href="amenities.html" class="nav-link active">Amenities</a><a href="gallery.html" class="nav-link">Gallery</a><a href="contactus.html" class="nav-link">Contact Us</a></nav><button class="nav-toggle"><span></span><span></span><span></span></button></div></header>
+
+<section class="page-hero">
+  <div class="page-hero-img img-wrap" data-parallax="0.3" data-parallax-container><img src="images/topliving.jpg" alt="Top living interior" style="width:100%;height:100%;object-fit:cover;" /></div>
+  <div class="page-hero-overlay"></div>
+  <div class="page-hero-content"><div class="breadcrumb"><a href="index.html" style="color:var(--gold);">Home</a><span>/</span>Amenities</div><h1>Crafted for Your <em style="font-style:italic;color:var(--gold-light);">Comfort</em></h1></div>
+</section>
+
+<section class="section" style="padding:100px 60px 60px;text-align:center;">
+  <div style="max-width:680px;margin:0 auto;">
+    <p class="section-label section-label-center" data-reveal="up">What We Offer</p>
+    <h2 class="section-title" style="text-align:center;" data-reveal="up" data-delay="1">Amenities Designed for <em>Your Stay</em></h2>
+    <div class="gold-rule center" data-reveal="up" data-delay="2"></div>
+    <p class="section-subtitle" style="text-align:center;margin:0 auto;" data-reveal="up" data-delay="3">Every amenity at Mandarin Orchid has been thoughtfully selected — not for show, but for genuine comfort. From the moment you arrive to the moment you leave, each detail serves your wellbeing.</p>
+  </div>
+</section>
+
+<section class="section section-cream" style="padding-top:0;padding-bottom:80px;">
+  <div class="container">
+    <div class="amenity-full-grid">
+      <div class="amenity-full-card" data-reveal="up" data-delay="1"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg><h3 class="af-name">Free Wi-Fi</h3><p class="af-desc">Complimentary high-speed internet access available throughout all rooms and common areas. Stay connected without interruption across the entire property.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="2"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><h3 class="af-name">Room Service</h3><p class="af-desc">In-room dining available for all guests. Whether a quiet breakfast or a late-night meal, our team brings it to your door with care and promptness.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="3"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg><h3 class="af-name">Daily Housekeeping</h3><p class="af-desc">Your room is refreshed daily by our attentive housekeeping team. Fresh linens, spotless bathrooms, and an immaculate space — every single day.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="1"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="3" width="15" height="13"/><polygon points="16,8 20,8 23,11 23,16 16,16 16,8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><h3 class="af-name">Free Parking</h3><p class="af-desc">Dedicated on-site parking spaces for every villa. Secure, convenient, and complimentary. Arrive by car without any concern for your vehicle.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="2"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M18 8h1a4 4 0 010 8h-1"/><circle cx="9" cy="16" r="1"/><path d="M2 8h9v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/></svg><h3 class="af-name">In-Room Tea &amp; Coffee</h3><p class="af-desc">Wake to a perfectly brewed cup of Nilgiri tea or coffee, placed thoughtfully in your room. The mountains taste best from your own private space.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="3"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9,22 9,12 15,12 15,22"/></svg><h3 class="af-name">Private Entrance</h3><p class="af-desc">Each villa features its own exclusive entrance — complete privacy from arrival to departure. Your space is yours alone.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="1"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg><h3 class="af-name">Steam &amp; Sauna</h3><p class="af-desc">Unwind in our dedicated steam and sauna facilities. The perfect complement to a day of hill walks or simply to melt away the week's tensions.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="2"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="5" r="3"/><path d="M12 8v8m-4-4h8"/><rect x="4" y="16" width="4" height="6" rx="1"/><rect x="16" y="16" width="4" height="6" rx="1"/></svg><h3 class="af-name">Mini Gym</h3><p class="af-desc">Keep your routine alive. Our well-equipped mini gymnasium offers the essentials for those who wish to stay active during their mountain retreat.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="3"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg><h3 class="af-name">Library</h3><p class="af-desc">A curated collection of books for quiet afternoons. Settle into an armchair with a Nilgiri view and let the pages carry you somewhere new.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="1"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 002 1.58h9.78a2 2 0 001.95-1.57l1.65-7.43H5.12"/></svg><h3 class="af-name">Kids' Play Area</h3><p class="af-desc">A safe, dedicated space for the little ones. Children can explore and play freely while parents relax — a resort that truly welcomes families.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="2"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><h3 class="af-name">CCTV Security</h3><p class="af-desc">Your safety is our priority. The property is equipped with comprehensive CCTV surveillance and trained security personnel around the clock.</p></div>
+      <div class="amenity-full-card" data-reveal="up" data-delay="3"><svg class="af-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><h3 class="af-name">24/7 Front Desk</h3><p class="af-desc">Our reception is staffed around the clock. Assistance, recommendations, or simply a warm conversation — we are always here when you need us.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Parallax break -->
+<div class="carousel-section parallax-divider" aria-label="Every detail considered carousel">
+  <div class="carousel-track">
+    <div class="carousel-slide">
+      <div class="img-wrap" style="height:140%;">
+        <img src="images/bbq.jpg" alt="BBQ grill with outdoor seating" style="width:100%;height:100%;object-fit:cover;" />
+      </div>
+    </div>
+    <div class="carousel-slide">
+      <div class="img-wrap" style="height:140%;">
+        <img src="images/fooseball.jpg" alt="Foosball table in villa game area" style="width:100%;height:100%;object-fit:cover;" />
+      </div>
+    </div>
+    <div class="carousel-slide">
+      <div class="img-wrap" style="height:140%;">
+        <img src="images/privategarden.jpg" alt="Private garden with Nilgiri backdrop" style="width:100%;height:100%;object-fit:cover;" />
+      </div>
+    </div>
+  </div>
+  <div class="carousel-controls">
+    <button class="carousel-btn carousel-btn-prev"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="11,4 6,9 11,14"/></svg></button>
+    <button class="carousel-btn carousel-btn-next"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="7,4 12,9 7,14"/></svg></button>
+  </div>
+  <div class="parallax-divider-overlay"><div class="parallax-divider-text" data-reveal="fade"><h2>Every Detail, <em>Considered</em></h2><p>Private Gardens &nbsp;·&nbsp; Fireplace Pits &nbsp;·&nbsp; BBQ Grills</p></div></div>
+</div>
+
+<!-- Villa Features -->
+<section class="section" style="padding:120px 60px;">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:72px;" data-reveal="up">
+      <p class="section-label section-label-center">Villa Exclusives</p>
+      <h2 class="section-title" style="text-align:center;">Beyond the Room — <em>Your Villa</em></h2>
+      <div class="gold-rule center"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:2px;">
+      <div style="background:var(--cream);padding:60px 50px;display:flex;gap:28px;" data-reveal="left">
+        <div style="width:60px;height:60px;flex-shrink:0;color:var(--gold);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg></div>
+        <div><h3 style="font-family:var(--font-serif);font-size:26px;font-weight:400;margin-bottom:12px;">Private Gardens</h3><p style="font-size:12px;color:var(--warm-grey);line-height:2;">Each villa opens onto a private garden of approximately 2,000 sq. ft. — your own patch of Nilgiri greenery, screened from the world.</p></div>
+      </div>
+      <div style="background:var(--charcoal);padding:60px 50px;display:flex;gap:28px;" data-reveal="right">
+        <div style="width:60px;height:60px;flex-shrink:0;color:var(--gold);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></div>
+        <div><h3 style="font-family:var(--font-serif);font-size:26px;font-weight:400;margin-bottom:12px;color:white;">Fireplace &amp; BBQ</h3><p style="font-size:12px;color:rgba(255,255,255,0.5);line-height:2;">Evenings around a firepit. Lazy Sunday barbecues. Each villa comes with an outdoor fireplace pit and barbecue grill — made for lingering.</p></div>
+      </div>
+      <div style="background:var(--charcoal);padding:60px 50px;display:flex;gap:28px;" data-reveal="left">
+        <div style="width:60px;height:60px;flex-shrink:0;color:var(--gold);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a5.5 5.5 0 0111 0"/><path d="M2 20a10 10 0 0120 0"/></svg></div>
+        <div><h3 style="font-family:var(--font-serif);font-size:26px;font-weight:400;margin-bottom:12px;color:white;">Nilgiri-View Balconies</h3><p style="font-size:12px;color:rgba(255,255,255,0.5);line-height:2;">Select villas offer private balconies that frame the Nilgiri hills like a living painting — the finest way to begin or end a day.</p></div>
+      </div>
+      <div style="background:var(--cream);padding:60px 50px;display:flex;gap:28px;" data-reveal="right">
+        <div style="width:60px;height:60px;flex-shrink:0;color:var(--gold);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+        <div><h3 style="font-family:var(--font-serif);font-size:26px;font-weight:400;margin-bottom:12px;">Two Sitting Rooms</h3><p style="font-size:12px;color:var(--warm-grey);line-height:2;">Space to spread out, gather, or be alone. Each villa includes two separate sitting areas — generous room for families and groups alike.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-dark" style="text-align:center;padding:100px 60px;">
+  <div class="container">
+    <p class="section-label section-label-center" style="color:rgba(196,150,60,0.7);" data-reveal="up">Experience It</p>
+    <h2 class="section-title light" style="text-align:center;" data-reveal="up" data-delay="1">Book Your Stay &amp; <em>Feel the Difference</em></h2>
+    <div class="gold-rule center" data-reveal="up" data-delay="2"></div>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:40px;" data-reveal="up" data-delay="3">
+      <a href="https://api.whatsapp.com/send?phone=916369233305&text=Hello%20Mandarin%20Orchid%20team.%0A%0AI%20would%20like%20to%20book%20a%20stay%20at%20your%20resort.%20Please%20let%20me%20know%20availability%2C%20best%20rates%2C%20and%20any%20recommendations%20for%20a%20tranquil%20stay%20in%20Kotagiri." target="_blank" class="btn-primary"><span>Reserve Now</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="7" x2="12" y2="7"/><polyline points="8,3 12,7 8,11"/></svg></a>
+      <a href="rooms.html" class="btn-ghost"><span>View Rooms</span></a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer"><div class="footer-top"><div class="footer-brand"><span class="footer-logo">Mandarin</span><span class="footer-logo-sub">Orchid Resort</span><p>A quiet luxury retreat in the Nilgiris. Four private villas. Sixteen rooms. Kotagiri, Tamil Nadu.</p><div class="footer-social"><a href="https://www.instagram.com/mandarinorchid" target="_blank" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a></div></div><div class="footer-col"><h4>Navigate</h4><ul><li><a href="index.html">Home</a></li><li><a href="aboutus.html">About Us</a></li><li><a href="rooms.html">Rooms</a></li><li><a href="amenities.html">Amenities</a></li><li><a href="gallery.html">Gallery</a></li><li><a href="attractions.html">Attractions</a></li><li><a href="blog.html">Journal</a></li><li><a href="contactus.html">Contact</a></li></ul></div><div class="footer-col"><h4>Policies</h4><ul><li><a href="faqs.html">FAQs</a></li><li><a href="refund-policy.html">Refund Policy</a></li><li><a href="privacy-policy.html">Privacy Policy</a></li><li><a href="terms-and-conditions.html">Terms &amp; Conditions</a></li></ul></div><div class="footer-col footer-contact"><h4>Contact</h4><ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Keircombai Road, Indranager, Melidhane, Kotagiri, TN 643217</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 .18h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z"/></svg>+91 6369 233 305</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>mandarinorchidnilgiries@gmail.com</li></ul></div></div><div class="footer-divider"></div><div class="footer-bottom"><p class="footer-copy">&copy; 2026 Mandarin Orchid Resort. All rights reserved.</p><div class="footer-legal"><a href="privacy-policy.html">Privacy</a><a href="terms-and-conditions.html">Terms</a><a href="refund-policy.html">Refunds</a></div></div></footer>
+<a href="https://api.whatsapp.com/send?phone=916369233305" target="_blank" class="whatsapp-fab" aria-label="WhatsApp"><svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></a>
+<script src="js/main.js"></script>
+</body>
+</html>

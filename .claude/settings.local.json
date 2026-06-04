@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:mandarinresort.in)",
+      "Bash(mkdir -p /Users/abhinavharisri/Downloads/mandarin/.claude)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}
