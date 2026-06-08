@@ -944,7 +944,7 @@ body:has(button:hover) .cursor-outer {
 }
 .amenities-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 2px;
 }
 .amenity-card {
