@@ -775,5 +775,77 @@
 </a>
 
 <script src="js/main.js"></script>
+
+<!-- ===== Google Reviews ===== -->
+<script>
+(function() {
+  var PLACE_ID  = 'ChIJZ3R-_prBqDsRclH_vEVImRU';
+  var API_KEY   = 'AIzaSyA_GhqovXA4wfapbzCoOODLA8sj9wXzY-4';
+
+  if (PLACE_ID === 'YOUR_PLACE_ID' || API_KEY === 'YOUR_API_KEY') return;
+
+  var starSVG = '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+
+  window._initGoogleReviews = function() {
+    var section = document.querySelector('.testimonials-section');
+    if (!section) return;
+    var inner = section.querySelector('.testimonials-inner');
+    var dotsContainer = inner.querySelector('.testimonial-dots');
+
+    var dummy = document.createElement('div');
+    document.body.appendChild(dummy);
+    var service = new google.maps.places.PlacesService(dummy);
+
+    service.getDetails({ placeId: PLACE_ID, fields: ['reviews'] }, function(place, status) {
+      document.body.removeChild(dummy);
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !place.reviews || !place.reviews.length) return;
+
+      inner.querySelectorAll('.testimonial-slide').forEach(function(el) { el.remove(); });
+      dotsContainer.innerHTML = '';
+
+      place.reviews.forEach(function(review, i) {
+        var text = review.text.length > 300 ? review.text.slice(0, 297) + '…' : review.text;
+        var stars = Array(Math.min(Math.round(review.rating), 5)).fill(starSVG).join('');
+
+        var slide = document.createElement('div');
+        slide.className = 'testimonial-slide' + (i === 0 ? ' active' : '');
+        slide.innerHTML =
+          '<div class="testimonial-border">' +
+            '<div class="testimonial-rating">' + stars + '</div>' +
+            '<p class="testimonial-text">“' + text + '”</p>' +
+          '</div>' +
+          '<p class="testimonial-author">— ' + review.author_name + '</p>';
+        dotsContainer.before(slide);
+
+        var dot = document.createElement('button');
+        dot.className = 't-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Review ' + (i + 1));
+        dotsContainer.appendChild(dot);
+      });
+
+      var slides = inner.querySelectorAll('.testimonial-slide');
+      var dots   = inner.querySelectorAll('.t-dot');
+      var tIdx   = 0;
+
+      function goT(idx) {
+        slides[tIdx].classList.remove('active');
+        if (dots[tIdx]) dots[tIdx].classList.remove('active');
+        tIdx = (idx + slides.length) % slides.length;
+        slides[tIdx].classList.add('active');
+        if (dots[tIdx]) dots[tIdx].classList.add('active');
+      }
+
+      dots.forEach(function(dot, i) { dot.addEventListener('click', function() { goT(i); }); });
+      setInterval(function() { goT(tIdx + 1); }, 6000);
+    });
+  };
+
+  var script = document.createElement('script');
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + API_KEY + '&libraries=places&callback=_initGoogleReviews';
+  script.async = true;
+  script.defer = true;
+  document.body.appendChild(script);
+})();
+</script>
 </body>
 </html>
