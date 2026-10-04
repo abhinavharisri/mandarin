@@ -2,6 +2,7 @@ import { FormEvent, KeyboardEvent, useState } from 'react';
 import { api } from './client';
 import { Session } from './types';
 import { Icon, Spinner } from './ui';
+import logoUrl from './logo.png';
 
 export function Login({ onSignedIn, message }: { onSignedIn: (session: Session) => void; message?: string }) {
   const [password, setPassword] = useState('');
@@ -39,7 +40,7 @@ export function Login({ onSignedIn, message }: { onSignedIn: (session: Session) 
       <section className="auth-panel">
         <a className="back-link" href="/"><Icon name="arrowRight" size={14} /> Back to resort website</a>
         <div className="auth-card">
-          <img className="brand-mark" src="/admin/favicon.png" alt="" />
+          <img className="brand-mark" src={logoUrl} alt="" />
           <p className="eyebrow">MANDARIN ORCHID RESORT</p>
           <h1>Welcome back</h1>
           <p className="muted">Sign in to manage your gallery, invoices and revenue.</p>

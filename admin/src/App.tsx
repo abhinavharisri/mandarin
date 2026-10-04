@@ -8,6 +8,7 @@ import { Login } from './Login';
 import { Overview } from './Overview';
 import { GalleryImage, InvoiceSummary, Session, View } from './types';
 import { Icon, Toast, Toasts } from './ui';
+import logoUrl from './logo.png';
 
 const views: { id: View; label: string; title: string; subtitle: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', title: 'Dashboard', subtitle: 'Revenue, photos and website at a glance', icon: 'overview' },
@@ -165,7 +166,7 @@ export function App() {
   const gateOverlay = gate && <Gate mode={gate.mode} leaving={gate.leaving} />;
 
   if (!session) {
-    return <main className="boot-screen" aria-busy="true"><img src="/admin/favicon.png" alt="" /><p>Opening your dashboard…</p></main>;
+    return <main className="boot-screen" aria-busy="true"><img src={logoUrl} alt="" /><p>Opening your dashboard…</p></main>;
   }
   if (!session.authenticated) {
     return <>{gateOverlay}<Login message={lockMessage} onSignedIn={signedIn} /></>;
@@ -181,7 +182,7 @@ export function App() {
       <a className="skip-link" href="#main">Skip to content</a>
       <aside className="sidebar">
         <a className="sidebar-brand" href="/" target="_blank" rel="noopener" title="Open the resort website">
-          <img src="/admin/favicon.png" alt="" />
+          <img src={logoUrl} alt="" />
           <span><b>Mandarin Orchid</b><small>RESORT ADMIN</small></span>
         </a>
         <nav aria-label="Dashboard">
@@ -208,7 +209,7 @@ export function App() {
       <div className="dashboard-main">
         <header className="topbar">
           <div className="topbar-title">
-            <a className="mobile-brand" href="/" target="_blank" rel="noopener" aria-label="Open the resort website"><img src="/admin/favicon.png" alt="" /></a>
+            <a className="mobile-brand" href="/" target="_blank" rel="noopener" aria-label="Open the resort website"><img src={logoUrl} alt="" /></a>
             <div>
               <h1>{current.title}</h1>
               <p className="muted">{current.subtitle}</p>
