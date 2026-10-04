@@ -30,7 +30,6 @@ function publicPage(urlPath: string) {
 
 export default defineConfig({
   root: path.resolve(import.meta.dirname),
-  publicDir: path.resolve(import.meta.dirname, 'public'),
   base: '/admin/',
   build: {
     outDir: path.resolve(import.meta.dirname, '../dist/admin'),
