@@ -329,7 +329,8 @@ if (lightbox) {
 
   document.querySelectorAll('[data-lightbox]').forEach(item => {
     item.addEventListener('click', () => {
-      const src = item.querySelector('img')?.src || item.dataset.lightbox;
+      const img = item.querySelector('img');
+      const src = img?.dataset.fullSrc || img?.currentSrc || item.dataset.lightbox;
       if (lbImg && src) {
         lbImg.src = src;
         lightbox.classList.add('open');
