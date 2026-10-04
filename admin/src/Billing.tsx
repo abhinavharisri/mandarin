@@ -1,8 +1,9 @@
-import { DragEvent, FormEvent, Fragment, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, downloadFile } from './client';
-import { inr, shortDate } from './format';
+import { inr, optionLabel, shortDate } from './format';
 import { InvoiceTable } from './InvoiceTable';
-import { InvoiceSummary, Notify } from './types';
+import { MenuPicker } from './MenuPicker';
+import { InvoiceDraft, InvoiceSummary, Menu, Notify, PickedLine } from './types';
 import type { NotesImport } from './notes/parseNotes';
 import { Icon, Modal, Segmented, Spinner, stagger } from './ui';
 
@@ -10,7 +11,7 @@ type LineItem = { description: string; quantity: string; unitPrice: string; sect
 type ImportSummary = { fileName: string; count: number; declaredTotal: number | null; skipped: string[] };
 type Period = 'all' | 'month' | '30d' | 'year';
 
-const maxLines = 80;
+const maxLines = 150;
 const emptyLine = (description = '', section = ''): LineItem => ({ description, quantity: '1', unitPrice: '', section });
 const quickItems = ['Room night', 'Villa night', 'Breakfast', 'Extra bed', 'Bonfire & barbecue', 'Airport transfer'];
 const taxPresets = ['0', '5', '12', '18'];
@@ -34,8 +35,9 @@ const csvCell = (value: string | number) => {
   return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
 };
 
-export function Billing({ invoices, loading, refresh, notify }: {
+export function Billing({ invoices, loading, refresh, notify, menu, draft, onDraftUsed }: {
   invoices: InvoiceSummary[]; loading: boolean; refresh: () => Promise<void>; notify: Notify;
+  menu: Menu | null; draft: InvoiceDraft | null; onDraftUsed: () => void;
 }) {
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -45,6 +47,9 @@ export function Billing({ invoices, loading, refresh, notify }: {
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<ImportSummary | null>(null);
   const [draggingNotes, setDraggingNotes] = useState(false);
+  const [tabId, setTabId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [pickSection, setPickSection] = useState('');
   const [taxRate, setTaxRate] = useState('0');
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
   const [sourceBill, setSourceBill] = useState<File | null>(null);
@@ -57,6 +62,41 @@ export function Billing({ invoices, loading, refresh, notify }: {
   const totals = totalsFor(lineItems, Number(taxRate));
   const nights = nightsBetween(stayStart, stayEnd);
   const mismatch = imported?.declaredTotal != null && Math.abs(imported.declaredTotal - totals.subtotal) > 0.009;
+
+  // A tab checked out on the Tabs page arrives here pre-filled for review (applied once).
+  const appliedDraft = useRef<InvoiceDraft | null>(null);
+  useEffect(() => {
+    if (!draft || appliedDraft.current === draft) return;
+    appliedDraft.current = draft;
+    setGuestName(draft.guestName);
+    setGuestEmail(draft.guestEmail);
+    setStayStart(draft.stayStart);
+    setStayEnd(draft.stayEnd);
+    setStayLabel(draft.stayLabel);
+    setLineItems(draft.lines.slice(0, maxLines).map(line => ({
+      description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section,
+    })));
+    setImported(null);
+    setSourceBill(null);
+    setTabId(draft.tabId);
+    onDraftUsed();
+    notify(`Bill prepared from ${draft.stayLabel}'s tab. Add room charges if needed, then generate.`);
+  }, [draft, onDraftUsed, notify]);
+
+  const addFromMenu = (picked: PickedLine[]) => {
+    setLineItems(lines => {
+      const next = lines.filter(line => line.description.trim() || line.unitPrice).map(line => ({ ...line }));
+      for (const pick of picked) {
+        const description = optionLabel(pick.name, pick.option);
+        const same = next.find(line => line.section === pickSection && line.description === description && Number(line.unitPrice) === pick.unitPrice);
+        if (same) same.quantity = String(Number(same.quantity) + pick.quantity);
+        else next.push({ description, quantity: String(pick.quantity), unitPrice: String(pick.unitPrice), section: pickSection });
+      }
+      return (next.length ? next : [emptyLine()]).slice(0, maxLines);
+    });
+    setPicking(false);
+    notify(`Added ${picked.reduce((sum, line) => sum + line.quantity, 0)} items from the menu.`);
+  };
 
   const records = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -133,6 +173,7 @@ export function Billing({ invoices, loading, refresh, notify }: {
     setLineItems([emptyLine()]);
     setSourceBill(null);
     setImported(null);
+    setTabId(null);
   };
 
   const downloadInvoice = async (invoice: InvoiceSummary) => {
@@ -158,6 +199,7 @@ export function Billing({ invoices, loading, refresh, notify }: {
     form.set('stayStart', stayStart);
     form.set('stayEnd', stayEnd);
     form.set('stayLabel', stayLabel);
+    if (tabId) form.set('tabId', tabId);
     form.set('taxRate', taxRate);
     form.set('lineItems', JSON.stringify(lineItems.map(item => ({
       description: item.description, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice),
@@ -199,6 +241,17 @@ export function Billing({ invoices, loading, refresh, notify }: {
             <div><p className="eyebrow">NEW DOCUMENT</p><h2>Create a branded invoice</h2></div>
             <span className="muted small">PDF · INR</span>
           </div>
+
+          {tabId && (
+            <div className="import-result" role="status">
+              <Icon name="clipboard" size={16} />
+              <div>
+                <b>Billing {stayLabel || 'a guest'}'s tab</b>
+                <span>The tab closes once this invoice is generated. Add room rent or other charges below if needed.</span>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setTabId(null)} aria-label="Keep the tab open"><Icon name="close" size={14} /></button>
+            </div>
+          )}
 
           <div className={`notes-import${draggingNotes ? ' dragging' : ''}${importing ? ' busy' : ''}`}
             onDragOver={event => { event.preventDefault(); setDraggingNotes(true); }}
@@ -250,6 +303,9 @@ export function Billing({ invoices, loading, refresh, notify }: {
           <fieldset>
             <legend><span className="step">2</span>Bill items</legend>
             <div className="quick-add" aria-label="Quick add items">
+              <button type="button" className="chip-button menu-chip" onClick={() => { setPickSection(lineItems.some(line => line.section) ? 'Stay & extras' : ''); setPicking(true); }} disabled={!menu}>
+                <Icon name="utensils" size={13} />Add from menu
+              </button>
               {quickItems.map(item => (
                 <button key={item} type="button" className="chip-button" onClick={() => addQuickItem(item)}><Icon name="plus" size={12} />{item}</button>
               ))}
@@ -350,6 +406,20 @@ export function Billing({ invoices, loading, refresh, notify }: {
         <InvoiceTable invoices={records} onDownload={downloadInvoice} onDelete={setPendingDelete} downloading={downloading} loading={loading}
           emptyText={invoices.length ? 'No invoices match this search.' : undefined} />
       </section>
+
+      {picking && menu && (
+        <Modal title="Add from menu" onClose={() => setPicking(false)} wide>
+          <MenuPicker menu={menu} confirmLabel="Add to bill" onConfirm={addFromMenu} onCancel={() => setPicking(false)}
+            header={(
+              <div className="picker-header">
+                <div><p className="eyebrow">ADD TO BILL</p><h2>From the menu</h2></div>
+                <label className="picker-section"><span>Section <span className="optional">optional</span></span>
+                  <input value={pickSection} maxLength={60} placeholder="e.g. 3 Oct · Lunch" onChange={event => setPickSection(event.target.value)} />
+                </label>
+              </div>
+            )} />
+        </Modal>
+      )}
 
       {pendingDelete && (
         <DeleteInvoiceDialog invoice={pendingDelete} onCancel={() => setPendingDelete(null)}

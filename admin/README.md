@@ -35,6 +35,13 @@ Until steps 2–4 are done, `/admin` shows a message explaining what is missing;
 
 There is no visible admin link on the public site. Go to `/admin` directly, type `orchid` anywhere on the website (outside a form field), or press and hold the header logo for about a second.
 
+## Menu, tabs and billing
+
+- **Menu** holds the food & beverages menu (seeded from the printed card): categories, veg / non-veg / egg markers, prices, sizes such as Plate / 1 kg, and an on/off switch to hide items when taking orders. An empty price means "as per availability" and is entered when ordering. Saved to `menu/menu.json` in R2.
+- **Tabs**: open one per villa or room at check-in, then add orders from the menu during the stay (phone-friendly). Each order is filed under the day and meal (defaults from the current time in India and can be changed). Menu prices are enforced by the server; custom items cover rent and anything not on the menu. Simultaneous additions from different phones are merged safely.
+- **Check out & bill** turns a tab into a pre-filled invoice on the Billing page (repeat orders merged, grouped by day and meal). Generating the invoice closes the tab; it then appears under "Recently billed".
+- The Billing page also has **Add from menu** for invoices made without a tab.
+
 ## Gallery and invoices
 
 - The existing gallery photos are included in the dashboard. Removing one hides it from the public gallery without deleting the original website image.

@@ -28,3 +28,32 @@ export function duration(seconds: number) {
 }
 
 export const monthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
+
+export const meals = ['Breakfast', 'Lunch', 'Evening snacks', 'Dinner'] as const;
+export type Meal = typeof meals[number];
+
+/** Current date (yyyy-mm-dd) and hour at the resort, regardless of the device's time zone. */
+export function resortNow(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) };
+}
+
+/** Breakfast before 11am, lunch until 4pm, evening snacks until 7pm, then dinner. */
+export function mealForHour(hour: number): Meal {
+  if (hour >= 5 && hour < 11) return 'Breakfast';
+  if (hour >= 11 && hour < 16) return 'Lunch';
+  if (hour >= 16 && hour < 19) return 'Evening snacks';
+  return 'Dinner';
+}
+
+/** Bill section label, e.g. "2 Oct · Dinner" (matches the staff notes import). */
+export function sectionLabel(isoDate: string, meal: string) {
+  const [, month, day] = isoDate.split('-').map(Number);
+  // Fixed month names so labels match the notes import on every browser ("Sep", never "Sept").
+  const label = `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1]}`;
+  return meal ? `${label} · ${meal}` : label;
+}
+
+export const optionLabel = (name: string, option: string) => option ? `${name} · ${option}` : name;

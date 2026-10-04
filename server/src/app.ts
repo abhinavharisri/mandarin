@@ -4,8 +4,11 @@ import {
   assertNotThrottled, assertSameOrigin, clearedSessionCookie, passwordMatches, recordAttempt, requireAdmin, sessionCookie, sessionExpiry,
 } from './auth.js';
 import { adminConfig, Env, HttpError } from './env.js';
+import { json, jsonBody, noContent } from './http.js';
 import { buildInvoicePdf, calculateTotals, InvoiceLine } from './invoice.js';
+import { menuRoutes } from './menu.js';
 import { listKeys, putJson, readJson, requireJson } from './storage.js';
+import { closeTab, tabRoutes } from './tabs.js';
 
 type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
@@ -41,7 +44,7 @@ const lineSchema = z.array(z.object({
   quantity: z.number().int().min(1).max(9999),
   unitPrice: z.number().min(0).max(10_000_000),
   section: z.string().trim().max(60).optional(),
-})).min(1).max(80);
+})).min(1).max(150);
 
 const gallerySeeds = [
   ['livingroom', 'Living room interior with ornate wooden sofa and warm lighting', 'common', 1600, [480, 960, 1600, 2048, 2400, 3200], 3200],
@@ -76,15 +79,6 @@ const builtInGallery: GalleryRecord[] = gallerySeeds.map(([name, alt_text, categ
 });
 
 // ===== Helpers =====
-
-const json = (body: unknown, status = 200, headers: HeadersInit = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
-
-const noContent = (headers: HeadersInit = {}) => new Response(null, { status: 204, headers });
-
-async function jsonBody(request: Request) {
-  try { return await request.json(); } catch { return null; }
-}
 
 /** Identifies JPEG, PNG, WebP and PDF uploads from their leading bytes rather than trusting the browser. */
 function sniff(bytes: Uint8Array) {
@@ -199,6 +193,15 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   await requireAdmin(request, config);
 
+  if (segments[1] === 'menu') {
+    const response = await menuRoutes(request, bucket, path);
+    if (response) return response;
+  }
+  if (segments[1] === 'tabs') {
+    const response = await tabRoutes(request, bucket, segments);
+    if (response) return response;
+  }
+
   if (path === '/api/admin/gallery' && method === 'GET') return json(await galleryRecords(bucket));
 
   if (path === '/api/admin/gallery' && method === 'POST') {
@@ -284,6 +287,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       stayStart: z.string().date(),
       stayEnd: z.string().date(),
       stayLabel: z.string().trim().max(60).optional(),
+      tabId: z.string().uuid().optional(),
       taxRate: z.coerce.number().min(0).max(100).default(0),
       lineItems: z.string().transform((value, context) => {
         try { return JSON.parse(value) as unknown; }
@@ -298,6 +302,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       stayStart: form.get('stayStart'),
       stayEnd: form.get('stayEnd'),
       stayLabel: form.get('stayLabel') ?? undefined,
+      tabId: form.get('tabId') || undefined,
       taxRate: form.get('taxRate') ?? 0,
       lineItems: form.get('lineItems'),
     });
@@ -352,6 +357,10 @@ async function route(request: Request, env: Env): Promise<Response> {
     } catch (error) {
       if (saved.length) await bucket.delete(saved);
       throw error;
+    }
+    if (input.data.tabId) {
+      // The invoice is already saved; a failure here only leaves the tab open for staff to close.
+      await closeTab(bucket, input.data.tabId, { id, number: invoiceNumber }).catch(error => console.error('Could not close tab', error));
     }
     return pdfResponse(pdf, `${invoiceNumber}.pdf`, 201, { 'X-Invoice-Number': invoiceNumber });
   }

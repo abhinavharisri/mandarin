@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { CategoryBars, monthlyRevenue, RevenueChart } from './charts';
 import { greeting, inrRounded, shortDate } from './format';
+import { api } from './client';
 import { InvoiceTable } from './InvoiceTable';
-import { GalleryImage, InvoiceSummary, View } from './types';
+import { GalleryImage, InvoiceSummary, TabSummary, View } from './types';
 import { CountUp, Icon, Segmented, stagger } from './ui';
 
 const websitePages = [
@@ -16,6 +17,11 @@ export function Overview({ gallery, invoices, loading, onNavigate }: {
   gallery: GalleryImage[]; invoices: InvoiceSummary[]; loading: boolean; onNavigate: (view: View) => void;
 }) {
   const [months, setMonths] = useState<'6' | '12'>('6');
+  const [openTabs, setOpenTabs] = useState<TabSummary[] | null>(null);
+  useEffect(() => {
+    api<{ open: TabSummary[] }>('/api/admin/tabs').then(list => setOpenTabs(list.open)).catch(() => setOpenTabs([]));
+  }, []);
+  const tabsTotal = (openTabs || []).reduce((sum, tab) => sum + tab.total, 0);
   const stats = useMemo(() => {
     const [lastMonth, thisMonth] = monthlyRevenue(invoices, 2);
     const total = invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0);
@@ -24,7 +30,6 @@ export function Overview({ gallery, invoices, loading, onNavigate }: {
       total,
       thisMonth,
       change,
-      average: invoices.length ? total / invoices.length : 0,
       uploaded: gallery.filter(image => !image.id.startsWith('built-in-')).length,
     };
   }, [gallery, invoices]);
@@ -38,7 +43,8 @@ export function Overview({ gallery, invoices, loading, onNavigate }: {
           <h2>{greeting()}, welcome back.</h2>
           <p>Here's how Mandarin Orchid is doing at a glance.</p>
           <div className="hero-actions">
-            <button type="button" className="primary-button" onClick={() => onNavigate('billing')}><Icon name="plus" size={15} />New invoice</button>
+            <button type="button" className="primary-button" onClick={() => onNavigate('tabs')}><Icon name="plus" size={15} />Add orders</button>
+            <button type="button" className="glass-button" onClick={() => onNavigate('billing')}><Icon name="receipt" size={15} />New invoice</button>
             <button type="button" className="glass-button" onClick={() => onNavigate('gallery')}><Icon name="upload" size={15} />Add photos</button>
             <a className="glass-button" href="/" target="_blank" rel="noopener"><Icon name="globe" size={15} />View website</a>
           </div>
@@ -50,8 +56,8 @@ export function Overview({ gallery, invoices, loading, onNavigate }: {
           foot={`${invoices.length} invoice${invoices.length === 1 ? '' : 's'} on record`} />
         <StatCard index={2} icon="calendar" label="This month" value={stats.thisMonth.total} format={inrRounded} loading={loading}
           foot={<Change value={stats.change} />} />
-        <StatCard index={3} icon="receipt" label="Average invoice" value={stats.average} format={inrRounded} loading={loading}
-          foot={`${stats.thisMonth.count} issued this month`} />
+        <StatCard index={3} icon="clipboard" label="Open tabs" value={tabsTotal} format={inrRounded} loading={openTabs === null}
+          foot={openTabs?.length ? <button type="button" className="text-button" onClick={() => onNavigate('tabs')}>{openTabs.map(tab => tab.label).join(', ')} <Icon name="arrowRight" size={12} /></button> : 'No guests with open tabs'} />
         <StatCard index={4} icon="gallery" label="Published photos" value={gallery.length} loading={loading}
           foot={`${stats.uploaded} uploaded by you`} />
       </div>

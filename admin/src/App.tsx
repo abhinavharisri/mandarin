@@ -5,15 +5,19 @@ import { duration } from './format';
 import { Gallery } from './Gallery';
 import { Gate, GateMode } from './Gate';
 import { Login } from './Login';
+import { MenuPage } from './MenuPage';
 import { Overview } from './Overview';
-import { GalleryImage, InvoiceSummary, Session, View } from './types';
+import { Tabs } from './Tabs';
+import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Session, View } from './types';
 import { Icon, Toast, Toasts } from './ui';
 import logoUrl from './logo.png';
 
 const views: { id: View; label: string; title: string; subtitle: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', title: 'Dashboard', subtitle: 'Revenue, photos and website at a glance', icon: 'overview' },
-  { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
+  { id: 'tabs', label: 'Tabs', title: 'Guest tabs', subtitle: 'Add orders for each villa and bill them at checkout', icon: 'clipboard' },
   { id: 'billing', label: 'Billing', title: 'Billing & invoices', subtitle: 'Create branded invoices and track history', icon: 'billing' },
+  { id: 'menu', label: 'Menu', title: 'Food & beverages menu', subtitle: 'Prices and items used for orders and bills', icon: 'utensils' },
+  { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
 ];
 const idleLimitMs = 30 * 60 * 1000;
 const gateDurationMs = 1900;
@@ -46,6 +50,8 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(storedTheme);
   const [now, setNow] = useState(() => Date.now());
   const [gate, setGate] = useState<{ mode: GateMode; leaving: boolean } | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
+  const [draft, setDraft] = useState<InvoiceDraft | null>(null);
   const lastActivity = useRef(Date.now());
   const toastId = useRef(0);
 
@@ -60,6 +66,8 @@ export function App() {
     setLockMessage(message);
     setGallery([]);
     setInvoices([]);
+    setMenu(null);
+    setDraft(null);
   }, []);
 
   useEffect(() => {
@@ -116,6 +124,8 @@ export function App() {
     refresh()
       .catch(error => notify(error instanceof Error ? error.message : 'Could not load admin data.', true))
       .finally(() => setDataLoading(false));
+    api<Menu>('/api/admin/menu').then(setMenu)
+      .catch(error => notify(error instanceof Error ? error.message : 'Could not load the menu.', true));
   }, [authenticated, refresh, notify]);
 
   // Session countdown, expiry and idle auto-lock.
@@ -227,8 +237,11 @@ export function App() {
 
         <main id="main" className="dashboard-content" key={view}>
           {view === 'overview' && <Overview gallery={gallery} invoices={invoices} loading={dataLoading} onNavigate={navigate} />}
+          {view === 'tabs' && <Tabs menu={menu} notify={notify} onCheckout={next => { setDraft(next); navigate('billing'); }} />}
+          {view === 'billing' && <Billing invoices={invoices} loading={dataLoading} refresh={refresh} notify={notify}
+            menu={menu} draft={draft} onDraftUsed={() => setDraft(null)} />}
+          {view === 'menu' && <MenuPage menu={menu} onSaved={setMenu} notify={notify} />}
           {view === 'gallery' && <Gallery images={gallery} loading={dataLoading} refresh={refresh} notify={notify} />}
-          {view === 'billing' && <Billing invoices={invoices} loading={dataLoading} refresh={refresh} notify={notify} />}
         </main>
       </div>
 
@@ -238,7 +251,6 @@ export function App() {
             <Icon name={item.icon} size={20} /><span>{item.label}</span>
           </button>
         ))}
-        <a href="/" target="_blank" rel="noopener"><Icon name="globe" size={20} /><span>Website</span></a>
       </nav>
 
       {gateOverlay}
