@@ -1,0 +1,9 @@
+node_modules/
+admin-dist/
+dist/
+dist-server/
+admin/.env
+.env
+.env.local
+coverage/
+data/

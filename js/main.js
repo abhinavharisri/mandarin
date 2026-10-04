@@ -327,16 +327,19 @@ if (lightbox) {
   const lbImg   = lightbox.querySelector('.lightbox-img');
   const lbClose = lightbox.querySelector('.lightbox-close');
 
-  document.querySelectorAll('[data-lightbox]').forEach(item => {
-    item.addEventListener('click', () => {
-      const img = item.querySelector('img');
-      const src = img?.dataset.fullSrc || img?.currentSrc || item.dataset.lightbox;
-      if (lbImg && src) {
-        lbImg.src = src;
-        lightbox.classList.add('open');
-        document.body.style.overflow = 'hidden';
-      }
-    });
+  const openLightbox = item => {
+    const img = item.querySelector('img');
+    const src = img?.dataset.fullSrc || img?.currentSrc || item.dataset.lightbox;
+    if (lbImg && src) {
+      lbImg.src = src;
+      lightbox.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  };
+
+  document.addEventListener('click', event => {
+    const item = event.target.closest('[data-lightbox]');
+    if (item) openLightbox(item);
   });
 
   const closeLb = () => {
@@ -347,6 +350,102 @@ if (lightbox) {
   lbClose?.addEventListener('click', closeLb);
   lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLb(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+}
+
+/* ===== Site Favicon ===== */
+if (!document.querySelector('link[rel="icon"]')) {
+  const favicon = document.createElement('link');
+  favicon.rel = 'icon';
+  favicon.type = 'image/png';
+  favicon.href = '/images/favicon.png';
+  document.head.append(favicon);
+}
+
+/* ===== Staff Entrance =====
+   Two hidden ways into the admin dashboard:
+   - type "orchid" anywhere on the site (outside form fields), or
+   - press and hold the header logo for about a second (works on phones too). */
+const openStaffEntrance = () => {
+  if (document.querySelector('.staff-gate')) return;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const gate = document.createElement('div');
+  gate.className = 'staff-gate';
+  gate.setAttribute('role', 'dialog');
+  gate.setAttribute('aria-modal', 'true');
+  gate.setAttribute('aria-label', 'Staff entrance');
+  gate.innerHTML = `
+    <div class="staff-gate-door staff-gate-door--left" aria-hidden="true"></div>
+    <div class="staff-gate-door staff-gate-door--right" aria-hidden="true"></div>
+    <div class="staff-gate-content">
+      <div class="staff-gate-emblem" aria-hidden="true">
+        <svg class="staff-gate-ring" viewBox="0 0 120 120"><circle cx="60" cy="60" r="56"/></svg>
+        <img src="/images/favicon.png" alt="">
+      </div>
+      <p class="staff-gate-eyebrow">Mandarin Orchid Resort</p>
+      <h2 class="staff-gate-title">Staff Entrance</h2>
+      <p class="staff-gate-text">Opening the administrator sign-in&hellip;</p>
+      <div class="staff-gate-bar" aria-hidden="true"><span></span></div>
+      <button type="button" class="staff-gate-cancel">Stay on the website</button>
+    </div>`;
+  document.body.append(gate);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => gate.classList.add('open'));
+
+  const timer = setTimeout(() => { window.location.href = '/admin'; }, reducedMotion ? 300 : 2100);
+  const close = () => {
+    clearTimeout(timer);
+    document.removeEventListener('keydown', onKey);
+    gate.classList.remove('open');
+    gate.classList.add('closing');
+    document.body.style.overflow = '';
+    setTimeout(() => gate.remove(), reducedMotion ? 0 : 600);
+  };
+  const onKey = event => { if (event.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  const cancel = gate.querySelector('.staff-gate-cancel');
+  cancel.addEventListener('click', close);
+  cancel.focus({ preventScroll: true });
+};
+
+let typedSecret = '';
+document.addEventListener('keydown', event => {
+  const target = event.target;
+  if (event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) return;
+  if (target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  typedSecret = (typedSecret + event.key.toLowerCase()).slice(-6);
+  if (typedSecret === 'orchid') {
+    typedSecret = '';
+    openStaffEntrance();
+  }
+});
+
+const navLogo = document.querySelector('.nav-logo');
+if (navLogo) {
+  let holdTimer = null;
+  let suppressClick = false;
+  const cancelHold = () => {
+    clearTimeout(holdTimer);
+    navLogo.classList.remove('holding');
+  };
+  navLogo.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    suppressClick = false;
+    navLogo.classList.add('holding');
+    holdTimer = setTimeout(() => {
+      navLogo.classList.remove('holding');
+      suppressClick = true;
+      openStaffEntrance();
+    }, 1100);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(name => navLogo.addEventListener(name, cancelHold));
+  navLogo.addEventListener('click', event => {
+    if (!suppressClick) return;
+    event.preventDefault();
+    suppressClick = false;
+  });
+  navLogo.addEventListener('contextmenu', event => {
+    if (navLogo.classList.contains('holding') || suppressClick) event.preventDefault();
+  });
 }
 
 /* ===== Active Nav Link ===== */

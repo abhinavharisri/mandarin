@@ -1,0 +1,610 @@
+{
+  "schema": "clarification-questions/v1",
+  "generated_at": "2026-10-04T08:15:00Z",
+  "user_input": "Okay now that is done, need to make a admin dashboard for this, somethin gsimlpe you know, something like admin on the bottom of the page hidden or something you login with a password, and then you get the dashboard, where admin can add/remove images from the gallery oh and also a billing system where they upload the bill like a pdf or someting and then it generates a bill/invoice following the websites theme and ambience oh and also can you add a bitmap thing on the tabs, the image should be the logo of the resort",
+  "title": "Secure Admin, Gallery and Invoicing",
+  "assessment_snapshot": {
+    "intro": "The repository is a static resort website with an existing visual theme and no detected application backend, database, authentication, or API. The requested admin workflow therefore needs a secure persistence and hosting decision as well as UI behavior details.",
+    "bullets": [
+      "17 HTML pages with shared CSS and JavaScript; the public site currently uses a static-file pattern",
+      "No detected API/server, database, login flow, or upload service",
+      "Requested: password-protected admin access, gallery image management, bill upload and branded invoice generation, and a resort-logo browser tab icon",
+      "Existing visual design tokens and responsive styling are in css/style.css; the current public site should remain available"
+    ]
+  },
+  "proposed_outcome": "Add a discreet admin entry point and a secure authenticated dashboard without compromising the public site. Enable persistent gallery image management and an agreed bill-to-invoice workflow that produces downloadable, on-brand invoices. Add the resort logo as the browser favicon. Confirm the backend, storage, invoice behavior, and access policy before implementation.",
+  "scope": [
+    "frontend",
+    "backend",
+    "generic"
+  ],
+  "status": "answered",
+  "questions": [
+    {
+      "id": "F1",
+      "kit": "frontend",
+      "field": "target.framework",
+      "title": "Admin frontend approach",
+      "question": "How should the admin dashboard be built while keeping the public website intact?",
+      "importance": "required",
+      "impact": 4,
+      "recommended": "Keep the existing HTML/CSS/vanilla JavaScript approach for the admin (Recommended)",
+      "default": null,
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "Use React for the admin only; leave public pages unchanged",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Keep the existing HTML/CSS/vanilla JavaScript approach for the admin (Recommended)",
+          "label": "Keep the existing HTML/CSS/vanilla JavaScript approach"
+        },
+        {
+          "value": "Use React for the admin only; leave public pages unchanged",
+          "label": "Use React for the admin only; leave public pages unchanged"
+        },
+        {
+          "value": "Use another frontend framework",
+          "label": "Use another frontend framework"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F2",
+      "kit": "frontend",
+      "field": "target.component_library",
+      "title": "Admin UI styling",
+      "question": "Which component or styling approach should the dashboard and generated invoice use?",
+      "importance": "required",
+      "impact": 4,
+      "recommended": "Reuse the existing CSS and resort design tokens (Recommended)",
+      "default": null,
+      "prefilled": true,
+      "prefilled_value": "Reuse the existing CSS and resort design tokens (Recommended)",
+      "answer": {
+        "value": "Reuse the existing CSS and resort design tokens (Recommended)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Reuse the existing CSS and resort design tokens (Recommended)",
+          "label": "Reuse the existing CSS and resort design tokens"
+        },
+        {
+          "value": "Adopt a component library for the admin only",
+          "label": "Adopt a component library for the admin only"
+        },
+        {
+          "value": "Use another design/component system",
+          "label": "Use another design/component system"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F3",
+      "kit": "frontend",
+      "field": "visual.screenshots",
+      "title": "Dashboard visual reference",
+      "question": "Do you have a screenshot, sketch, or reference for the admin dashboard? You can provide a file path or URL, or say to use the existing resort site as the visual reference.",
+      "importance": "required",
+      "impact": 3,
+      "recommended": null,
+      "default": null,
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "https://cdn.dribbble.com/userupload/37126821/file/original-bf43d918c9642bbfd33a7d499645cc5a.png?resize=1504x1128&vertical=center\n\n\nhttps://i.pinimg.com/736x/3a/76/e4/3a76e4de8c593ea3bbd3d935d2f5fb7d.jpg\n\nsomething like these, but use our websites theme",
+        "source": "user"
+      },
+      "depends_on": null,
+      "type": "text",
+      "options": []
+    },
+    {
+      "id": "F4",
+      "kit": "frontend",
+      "field": "visual.design_system",
+      "title": "Brand design source",
+      "question": "Should the admin and generated invoice follow the existing resort design tokens and branding? The current CSS source is css/style.css.",
+      "importance": "required",
+      "impact": 4,
+      "recommended": "Match the existing resort theme and extracted CSS tokens in css/style.css (Recommended)",
+      "default": null,
+      "prefilled": true,
+      "prefilled_value": "Match the existing resort theme and extracted CSS tokens in css/style.css (Recommended)",
+      "answer": {
+        "value": "Match the existing resort theme and extracted CSS tokens in css/style.css (Recommended)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Match the existing resort theme and extracted CSS tokens in css/style.css (Recommended)",
+          "label": "Match the existing resort theme and CSS tokens in css/style.css"
+        },
+        {
+          "value": "Use a separate admin design system",
+          "label": "Use a separate admin design system"
+        },
+        {
+          "value": "Provide another design-system reference",
+          "label": "Provide another design-system reference"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F5",
+      "kit": "frontend",
+      "field": "compliance.accessibility",
+      "title": "Accessibility target",
+      "question": "What accessibility standard should the admin dashboard target?",
+      "importance": "recommended",
+      "impact": 3,
+      "recommended": "WCAG 2.1 AA (Recommended)",
+      "default": "WCAG 2.1 AA",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "WCAG 2.1 AA",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "WCAG 2.1 AA (Recommended)",
+          "label": "WCAG 2.1 AA"
+        },
+        {
+          "value": "WCAG 2.2 AA",
+          "label": "WCAG 2.2 AA"
+        },
+        {
+          "value": "No formal standard",
+          "label": "No formal standard"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F6",
+      "kit": "frontend",
+      "field": "compatibility.browsers",
+      "title": "Browser support",
+      "question": "Which browsers and devices must the admin dashboard support?",
+      "importance": "recommended",
+      "impact": 2,
+      "recommended": "Modern evergreen browsers (Recommended)",
+      "default": "modern evergreen (Chrome, Firefox, Safari, Edge — latest 2 major versions)",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "modern evergreen (Chrome, Firefox, Safari, Edge — latest 2 major versions)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Modern evergreen browsers (Recommended)",
+          "label": "Modern Chrome, Safari, Firefox, and Edge"
+        },
+        {
+          "value": "Include older browsers or devices",
+          "label": "Include older browsers or devices"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F7",
+      "kit": "frontend",
+      "field": "responsive.breakpoints",
+      "title": "Dashboard responsiveness",
+      "question": "How should the admin dashboard adapt to phones and desktop?",
+      "importance": "recommended",
+      "impact": 3,
+      "recommended": "Mobile-first and responsive, using existing breakpoints (Recommended)",
+      "default": "mobile-first using existing breakpoints detected from codebase",
+      "prefilled": true,
+      "prefilled_value": "Mobile-first and responsive, using existing breakpoints (Recommended)",
+      "answer": {
+        "value": "Mobile-first and responsive, using existing breakpoints (Recommended)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Mobile-first and responsive, using existing breakpoints (Recommended)",
+          "label": "Mobile-first and responsive, using existing breakpoints"
+        },
+        {
+          "value": "Desktop-focused; phone access is not required",
+          "label": "Desktop-focused; phone access is not required"
+        },
+        {
+          "value": "Specify another breakpoint strategy",
+          "label": "Specify another breakpoint strategy"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F8",
+      "kit": "frontend",
+      "field": "i18n.locales",
+      "title": "Admin languages",
+      "question": "Which languages should the admin dashboard and generated invoices support?",
+      "importance": "optional",
+      "impact": 2,
+      "recommended": null,
+      "default": "preserve current locales; keep existing i18n library if present",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "preserve current locales; keep existing i18n library if present",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "English only",
+          "label": "English only"
+        },
+        {
+          "value": "English, Tamil, and Hindi",
+          "label": "English, Tamil, and Hindi"
+        },
+        {
+          "value": "Same languages as the public site",
+          "label": "Same languages as the public site"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F9",
+      "kit": "frontend",
+      "field": "state_mgmt.preference",
+      "title": "Admin state handling",
+      "question": "Do you have a preference for how the dashboard manages form and session state?",
+      "importance": "optional",
+      "impact": 1,
+      "recommended": "Minimal built-in state and server-backed data (Recommended)",
+      "default": "preserve existing pattern if identifiable; otherwise recommend minimal (component state + server-state library)",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "preserve existing pattern if identifiable; otherwise recommend minimal (component state + server-state library)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Minimal built-in state and server-backed data (Recommended)",
+          "label": "Minimal built-in state and server-backed data"
+        },
+        {
+          "value": "Name a preferred state-management library",
+          "label": "Name a preferred state-management library"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "F10",
+      "kit": "frontend",
+      "field": "routing.preference",
+      "title": "Admin URL",
+      "question": "How should people reach the admin login/dashboard?",
+      "importance": "optional",
+      "impact": 2,
+      "recommended": "A dedicated clean URL such as /admin (Recommended)",
+      "default": "use the de-facto router for the chosen target framework",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "use the de-facto router for the chosen target framework",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "A dedicated clean URL such as /admin (Recommended)",
+          "label": "A dedicated clean URL such as /admin"
+        },
+        {
+          "value": "A separate admin subdomain",
+          "label": "A separate admin subdomain"
+        },
+        {
+          "value": "Other URL strategy",
+          "label": "Other URL strategy"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "B1",
+      "kit": "backend",
+      "field": "target.framework",
+      "title": "Secure backend platform",
+      "question": "Which backend platform should provide secure login, gallery updates, file storage, and invoice generation? The current site is static and has no backend.",
+      "importance": "required",
+      "impact": 5,
+      "recommended": "Supabase managed backend (Auth, Postgres, Storage, and server functions) (Recommended)",
+      "default": null,
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "A separately hosted Node.js/TypeScript backend",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Supabase managed backend (Auth, Postgres, Storage, and server functions) (Recommended)",
+          "label": "Supabase managed backend (Auth, Postgres, Storage, and server functions)"
+        },
+        {
+          "value": "Vercel serverless functions with managed database and file storage",
+          "label": "Vercel serverless functions with managed database and file storage"
+        },
+        {
+          "value": "Firebase Authentication, database, and storage",
+          "label": "Firebase Authentication, database, and storage"
+        },
+        {
+          "value": "A separately hosted Node.js/TypeScript backend",
+          "label": "A separately hosted Node.js/TypeScript backend"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "B2",
+      "kit": "backend",
+      "field": "api.contract_preservation",
+      "title": "Public site compatibility",
+      "question": "Should the existing public pages and their behavior remain unchanged as the admin API is added?",
+      "importance": "required",
+      "impact": 4,
+      "recommended": "Must preserve existing public pages and behavior (Recommended)",
+      "default": "must preserve",
+      "prefilled": true,
+      "prefilled_value": "Must preserve existing public pages and behavior (Recommended)",
+      "answer": {
+        "value": "Must preserve existing public pages and behavior (Recommended)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Must preserve existing public pages and behavior (Recommended)",
+          "label": "Must preserve existing public pages and behavior"
+        },
+        {
+          "value": "A versioned change to public behavior is acceptable",
+          "label": "A versioned change to public behavior is acceptable"
+        },
+        {
+          "value": "Public site changes are acceptable",
+          "label": "Public site changes are acceptable"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "B3",
+      "kit": "backend",
+      "field": "data.migration_strategy",
+      "title": "Data and file storage",
+      "question": "There is no detected existing database. Should the admin use a new managed data/file store, or do you need to migrate existing gallery or billing records?",
+      "importance": "required",
+      "impact": 4,
+      "recommended": "No migration; create new managed storage for admin data and uploads (Recommended)",
+      "default": "TBD / assess in research phase",
+      "prefilled": true,
+      "prefilled_value": "No migration; create new managed storage for admin data and uploads (Recommended)",
+      "answer": {
+        "value": "No migration; create new managed storage for admin data and uploads (Recommended)",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "No migration; create new managed storage for admin data and uploads (Recommended)",
+          "label": "No migration; create new managed storage for admin data and uploads"
+        },
+        {
+          "value": "Migrate existing records/files into the new system",
+          "label": "Migrate existing records/files into the new system"
+        },
+        {
+          "value": "TBD / assess storage and migration in research",
+          "label": "TBD / assess storage and migration in research"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "B4",
+      "kit": "backend",
+      "field": "auth.framework",
+      "title": "Admin authentication",
+      "question": "How should the administrator account be authenticated? A shared password hard-coded into a static page or stored in browser code is not secure.",
+      "importance": "recommended",
+      "impact": 5,
+      "recommended": "Managed authentication with one private admin account and MFA if available (Recommended)",
+      "default": "preserve existing auth mechanism; detect from codebase",
+      "prefilled": true,
+      "prefilled_value": "Managed authentication with one private admin account",
+      "answer": {
+        "value": "Managed authentication with one private admin account",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Managed authentication with one private admin account and MFA if available (Recommended)",
+          "label": "Managed authentication with one private admin account and MFA if available"
+        },
+        {
+          "value": "Managed authentication with multiple named admin accounts",
+          "label": "Managed authentication with multiple named admin accounts"
+        },
+        {
+          "value": "Custom server-side password login",
+          "label": "Custom server-side password login"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "B5",
+      "kit": "backend",
+      "field": "nfr.sla",
+      "title": "Reliability expectations",
+      "question": "What availability or response-time expectations should apply to admin login, uploads, and invoice generation?",
+      "importance": "recommended",
+      "impact": 2,
+      "recommended": "Match the current production baseline; no regression (Recommended)",
+      "default": "match current production baseline; no regression",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "match current production baseline; no regression",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Match the current production baseline; no regression (Recommended)",
+          "label": "Match the current production baseline; no regression"
+        },
+        {
+          "value": "Specify availability or response-time targets",
+          "label": "Specify availability or response-time targets"
+        },
+        {
+          "value": "Best-effort admin availability is acceptable",
+          "label": "Best-effort admin availability is acceptable"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "G1",
+      "kit": "generic",
+      "field": "success.definition",
+      "title": "Definition of done",
+      "question": "What must work for you to consider this complete?",
+      "importance": "required",
+      "impact": 5,
+      "recommended": null,
+      "default": "feature parity with the current system; all existing user-facing behaviors preserved",
+      "prefilled": true,
+      "prefilled_value": "Secure admin login; admin can add/remove gallery images; uploaded bill files produce downloadable invoices using the resort theme; resort logo appears as the browser tab icon; public website remains usable.",
+      "answer": {
+        "value": "Secure admin login; admin can add/remove gallery images; uploaded bill files produce downloadable invoices using the resort theme; resort logo appears as the browser tab icon; public website remains usable.",
+        "source": "user"
+      },
+      "depends_on": null,
+      "type": "text",
+      "options": []
+    },
+    {
+      "id": "G2",
+      "kit": "generic",
+      "field": "out_of_scope",
+      "title": "Out-of-scope boundaries",
+      "question": "Are there related features or pages that must not be changed?",
+      "importance": "recommended",
+      "impact": 2,
+      "recommended": null,
+      "default": "no explicit exclusions; agent will infer from project structure",
+      "prefilled": true,
+      "prefilled_value": "Keep existing public website content and visitor behavior unchanged except for the admin entry point, gallery updates, and the favicon. No online card/payment processing was explicitly requested.",
+      "answer": {
+        "value": "Keep existing public website content and visitor behavior unchanged except for the admin entry point, gallery updates, and the favicon. No online card/payment processing was explicitly requested.",
+        "source": "user"
+      },
+      "depends_on": null,
+      "type": "text",
+      "options": []
+    },
+    {
+      "id": "G3",
+      "kit": "generic",
+      "field": "existing_tests.posture",
+      "title": "Test expectations",
+      "question": "How should existing tests be treated? No automated test suite was detected in the repository scan.",
+      "importance": "recommended",
+      "impact": 2,
+      "recommended": "Add focused tests for the new dashboard and preserve any existing checks (Recommended)",
+      "default": "must pass",
+      "prefilled": false,
+      "prefilled_value": null,
+      "answer": {
+        "value": "must pass",
+        "source": "user"
+      },
+      "depends_on": null,
+      "options": [
+        {
+          "value": "Add focused tests for the new dashboard and preserve any existing checks (Recommended)",
+          "label": "Add focused tests for the new dashboard and preserve any existing checks"
+        },
+        {
+          "value": "Existing tests may be replaced with equivalent coverage",
+          "label": "Existing tests may be replaced with equivalent coverage"
+        },
+        {
+          "value": "Skip tests",
+          "label": "Skip tests"
+        }
+      ],
+      "allow_other": true,
+      "type": "single_select"
+    },
+    {
+      "id": "G5",
+      "kit": "generic",
+      "field": "constraints.additional",
+      "title": "Invoice workflow and other requirements",
+      "question": "Please specify what the uploaded bill PDF should do (for example, extract its details or just attach it), the information required on the generated invoice (guest, stay dates, line items, taxes, currency, invoice numbering), whether invoices should be emailed or only downloaded, and any file-retention or administrator-account requirements. Add any other constraints here too.",
+      "importance": "optional",
+      "impact": 5,
+      "recommended": null,
+      "default": "None beyond the decisions listed in this specification.",
+      "prefilled": true,
+      "prefilled_value": "None beyond the decisions listed in this specification.",
+      "answer": {
+        "value": "None beyond the decisions listed in this specification.",
+        "source": "user"
+      },
+      "depends_on": null,
+      "type": "text",
+      "options": []
+    }
+  ]
+}
