@@ -1,32 +1,23 @@
 {
-  "name": "mandarin-orchid-admin",
+  "name": "mandarin-orchid",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,admin -c yellow,cyan \"npm:dev:api\" \"npm:dev:admin\"",
-    "dev:api": "tsx watch server/src/index.ts",
+    "dev:api": "node scripts/build-site.mjs && wrangler pages dev dist --port 8788 --r2 BUCKET --compatibility-date 2026-10-01 --persist-to data/wrangler",
     "dev:admin": "vite --host 0.0.0.0 --config admin/vite.config.ts",
-    "build:server": "tsc -p tsconfig.server.json",
-    "build": "npm run build:server && node scripts/build-site.mjs && vite build --config admin/vite.config.ts",
+    "build": "node scripts/build-site.mjs && vite build --config admin/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.functions.json && tsc -p admin/tsconfig.json",
     "favicon": "node scripts/generate-favicon.mjs",
-    "start": "node dist-server/server/src/index.js",
     "test": "node --import tsx --test server/src/*.test.ts"
   },
   "dependencies": {
-    "@vercel/blob": "^2.8.0",
-    "dotenv": "^16.4.7",
-    "express": "^5.1.0",
-    "file-type": "^21.0.0",
-    "multer": "^2.0.2",
-    "pdfkit": "^0.17.1",
-    "sharp": "^0.35.5",
-    "zod": "^4.1.5"
+    "pdf-lib": "^1.17.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/multer": "^2.0.0",
+    "@cloudflare/workers-types": "^5.20261004.1",
     "@types/node": "^22.18.6",
-    "@types/pdfkit": "^0.17.3",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
@@ -35,6 +26,7 @@
     "react-dom": "^19.1.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wrangler": "^4.147.0"
   }
 }

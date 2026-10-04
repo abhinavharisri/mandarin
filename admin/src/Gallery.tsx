@@ -4,8 +4,32 @@ import { shortDate } from './format';
 import { categories, Category, GalleryImage, Notify } from './types';
 import { ConfirmDialog, Icon, Modal, Segmented, Spinner, stagger } from './ui';
 
-const maxUploadBytes = 4 * 1024 * 1024;
+const maxOriginalBytes = 25 * 1024 * 1024;
+const maxOptimisedBytes = 8 * 1024 * 1024;
+const maxDimension = 2400;
 const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Resizes and re-encodes a photo in the browser (WebP, or JPEG where WebP encoding
+ * is unsupported) so uploads stay small and EXIF metadata such as GPS is stripped.
+ */
+async function optimiseImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('This browser cannot prepare photos for upload.');
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const encode = (type: string) => new Promise<Blob | null>(resolve => canvas.toBlob(resolve, type, 0.86));
+  const webp = await encode('image/webp');
+  const blob = webp?.type === 'image/webp' ? webp : await encode('image/jpeg');
+  if (!blob) throw new Error('The photo could not be prepared for upload.');
+  return blob;
+}
 type Filter = 'all' | Category;
 const categoryLabel = (id: string) => categories.find(category => category.id === id)?.label || id;
 
@@ -160,8 +184,8 @@ function UploadPanel({ refresh, notify }: { refresh: () => Promise<void>; notify
       notify('Choose a JPG, PNG or WebP image.', true);
       return;
     }
-    if (chosen.size > maxUploadBytes) {
-      notify(`That photo is ${(chosen.size / 1024 / 1024).toFixed(1)} MB. The maximum is 4 MB.`, true);
+    if (chosen.size > maxOriginalBytes) {
+      notify(`That photo is ${(chosen.size / 1024 / 1024).toFixed(1)} MB. The maximum is 25 MB.`, true);
       return;
     }
     setFile(chosen);
@@ -183,12 +207,14 @@ function UploadPanel({ refresh, notify }: { refresh: () => Promise<void>; notify
   const upload = async (event: FormEvent) => {
     event.preventDefault();
     if (!file) return;
-    const form = new FormData();
-    form.set('image', file);
-    form.set('altText', altText);
-    form.set('category', category);
     setBusy(true);
     try {
+      const optimised = await optimiseImage(file);
+      if (optimised.size > maxOptimisedBytes) throw new Error('This photo is still too large after optimising. Try a smaller image.');
+      const form = new FormData();
+      form.set('image', optimised, optimised.type === 'image/webp' ? 'photo.webp' : 'photo.jpg');
+      form.set('altText', altText);
+      form.set('category', category);
       await api('/api/admin/gallery', { method: 'POST', body: form });
       reset();
       await refresh();
@@ -204,7 +230,7 @@ function UploadPanel({ refresh, notify }: { refresh: () => Promise<void>; notify
     <section className="panel stagger" style={stagger(0)}>
       <div className="panel-heading">
         <div><p className="eyebrow">IMAGE LIBRARY</p><h2>Add a photograph</h2></div>
-        <span className="muted small">Optimised to WebP automatically</span>
+        <span className="muted small">Resized & optimised in your browser · location data removed</span>
       </div>
       <form className="upload-layout" onSubmit={upload}>
         <div className={`dropzone${dragging ? ' dragging' : ''}${file ? ' has-file' : ''}`}
@@ -219,7 +245,7 @@ function UploadPanel({ refresh, notify }: { refresh: () => Promise<void>; notify
             <div className="dropzone-copy">
               <span className="empty-icon"><Icon name="upload" size={22} /></span>
               <b>Drop a photo here</b>
-              <span>or click to browse · JPG, PNG, WebP · up to 4 MB</span>
+              <span>or click to browse · JPG, PNG, WebP · up to 25 MB</span>
             </div>
           )}
           <input ref={input} type="file" accept={acceptedTypes.join(',')} aria-label="Choose photo"

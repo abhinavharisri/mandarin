@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildInvoicePdf, calculateTotals } from './invoice.js';
+import { PDFDocument } from 'pdf-lib';
+import { buildInvoicePdf, calculateTotals, pdfSafe } from './invoice.js';
+
+const pageCount = async (bytes: Uint8Array) => (await PDFDocument.load(bytes)).getPageCount();
 
 test('calculates INR invoice totals with tax rounded to paise', () => {
   assert.deepEqual(calculateTotals([
@@ -24,7 +27,26 @@ test('creates a valid one-page PDF invoice', async () => {
     lineItems: [{ description: 'Two nights stay', quantity: 2, unitPrice: 5000 }],
   });
 
-  assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
-  assert.ok(pdf.includes(Buffer.from('/Type /Page')));
-  assert.ok(pdf.includes(Buffer.from('%%EOF')));
+  const text = Buffer.from(pdf).toString('latin1');
+  assert.ok(text.startsWith('%PDF-'));
+  assert.ok(text.trimEnd().endsWith('%%EOF'));
+  assert.equal(await pageCount(pdf), 1);
+});
+
+test('handles non-Latin names and long bills without failing', async () => {
+  const pdf = await buildInvoicePdf({
+    invoiceNumber: 'MO-2026-0002',
+    issueDate: new Date(),
+    guestName: 'அனன்யா “Ananya” Raman — José',
+    stayStart: new Date(),
+    stayEnd: new Date(),
+    taxRate: 18,
+    lineItems: Array.from({ length: 30 }, (_, index) => ({ description: `Villa night ${index + 1} with breakfast and evening bonfire on the lawn`, quantity: 1, unitPrice: 9500 })),
+  });
+  assert.ok(await pageCount(pdf) > 1);
+});
+
+test('maps characters the PDF fonts cannot draw', () => {
+  assert.equal(pdfSafe('“José” – ₹500'), '"José" - Rs.500');
+  assert.equal(pdfSafe('அ'), '?');
 });

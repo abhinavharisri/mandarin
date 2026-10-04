@@ -1,0 +1,5 @@
+# Optional for local development: copy to .dev.vars to override the built-in
+# local password (mandarin-local-password). On Cloudflare Pages, set these as
+# encrypted environment variables instead (Settings -> Variables and Secrets).
+ADMIN_PASSWORD=replace-with-a-strong-password-of-at-least-12-characters
+ADMIN_SESSION_SECRET=replace-with-a-random-secret-of-at-least-32-characters

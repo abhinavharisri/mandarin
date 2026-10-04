@@ -1,4 +1,4 @@
-// Copies only the public website into dist/ so Vercel never serves source code,
+// Copies only the public website into dist/ so Cloudflare Pages never serves source code,
 // server files, or configuration. The admin dashboard is built into dist/admin.
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +16,8 @@ await Promise.all(publicDirectories.map(name => fs.cp(path.join(root, name), pat
   recursive: true,
   filter: source => path.basename(source) !== '.DS_Store',
 })));
-for (const optional of ['robots.txt', 'sitemap.xml', 'favicon.ico']) {
+// _headers holds Cloudflare Pages security headers for the admin dashboard.
+for (const optional of ['_headers', 'robots.txt', 'sitemap.xml', 'favicon.ico']) {
   await fs.copyFile(path.join(root, optional), path.join(out, optional)).catch(() => {});
 }
 

@@ -1,6 +1,4 @@
-import PDFDocument from 'pdfkit';
-import fs from 'node:fs';
-import path from 'node:path';
+import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
 
 export type InvoiceLine = { description: string; quantity: number; unitPrice: number };
 export type InvoiceData = {
@@ -12,6 +10,8 @@ export type InvoiceData = {
   stayEnd: Date;
   taxRate: number;
   lineItems: InvoiceLine[];
+  /** PNG bytes for the resort logo; the header is drawn without it when absent. */
+  logoPng?: Uint8Array;
 };
 
 export function calculateTotals(items: InvoiceLine[], taxRate: number) {
@@ -20,73 +20,135 @@ export function calculateTotals(items: InvoiceLine[], taxRate: number) {
   return { subtotal: Math.round(subtotal * 100) / 100, taxAmount, total: Math.round((subtotal + taxAmount) * 100) / 100 };
 }
 
-export function buildInvoicePdf(data: InvoiceData): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const document = new PDFDocument({ size: 'A4', margin: 52, bufferPages: true });
-    const chunks: Buffer[] = [];
-    document.on('data', chunk => chunks.push(Buffer.from(chunk)));
-    document.on('error', reject);
-    document.on('end', () => resolve(Buffer.concat(chunks)));
+const hex = (value: string) => rgb(parseInt(value.slice(1, 3), 16) / 255, parseInt(value.slice(3, 5), 16) / 255, parseInt(value.slice(5, 7), 16) / 255);
+const gold = hex('#C4963C');
+const charcoal = hex('#1A1814');
+const warmGrey = hex('#6B6560');
+const rule = hex('#E8DDD0');
+const goldPale = hex('#F5ECD8');
+const white = rgb(1, 1, 1);
 
-    const gold = '#C4963C';
-    const charcoal = '#1A1814';
-    const warmGrey = '#6B6560';
-    const totals = calculateTotals(data.lineItems, data.taxRate);
-    const logoPath = process.env.LOGO_PATH || path.resolve(process.cwd(), 'images/logo.png');
-
-    document.rect(0, 0, document.page.width, 9).fill(gold);
-    if (fs.existsSync(logoPath)) document.image(logoPath, 52, 34, { fit: [118, 70] });
-    document.fillColor(charcoal).font('Times-Bold').fontSize(28).text('INVOICE', 340, 48, { align: 'right' });
-    document.fillColor(warmGrey).font('Helvetica').fontSize(9).text('MANDARIN ORCHID RESORT', 340, 82, { align: 'right' });
-
-    document.moveTo(52, 128).lineTo(543, 128).strokeColor(gold).lineWidth(1).stroke();
-    document.fillColor(gold).font('Helvetica-Bold').fontSize(8).text('INVOICE DETAILS', 52, 148, { characterSpacing: 1.5 });
-    document.fillColor(charcoal).font('Helvetica').fontSize(10)
-      .text(`Invoice number  ${data.invoiceNumber}`, 52, 168)
-      .text(`Issue date  ${data.issueDate.toLocaleDateString('en-IN')}`, 52, 184);
-    document.fillColor(gold).font('Helvetica-Bold').fontSize(8).text('BILLED TO', 310, 148, { characterSpacing: 1.5 });
-    document.fillColor(charcoal).font('Helvetica').fontSize(10).text(data.guestName, 310, 168);
-    if (data.guestEmail) document.fillColor(warmGrey).fontSize(9).text(data.guestEmail, 310, 184);
-    document.fillColor(warmGrey).fontSize(9)
-      .text(`Stay: ${data.stayStart.toLocaleDateString('en-IN')} – ${data.stayEnd.toLocaleDateString('en-IN')}`, 52, 224);
-
-    const tableTop = 264;
-    document.rect(52, tableTop, 491, 28).fill(charcoal);
-    document.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(8)
-      .text('DESCRIPTION', 64, tableTop + 10)
-      .text('QTY', 350, tableTop + 10, { width: 40, align: 'right' })
-      .text('RATE', 410, tableTop + 10, { width: 60, align: 'right' })
-      .text('AMOUNT', 477, tableTop + 10, { width: 54, align: 'right' });
-    let rowY = tableTop + 38;
-    for (const item of data.lineItems) {
-      if (rowY > 620) {
-        document.addPage();
-        rowY = 70;
-      }
-      document.fillColor(charcoal).font('Helvetica').fontSize(9).text(item.description, 64, rowY, { width: 265 });
-      document.text(String(item.quantity), 350, rowY, { width: 40, align: 'right' });
-      document.text(formatMoney(item.unitPrice), 410, rowY, { width: 60, align: 'right' });
-      document.text(formatMoney(item.quantity * item.unitPrice), 477, rowY, { width: 54, align: 'right' });
-      rowY += 28;
-      document.moveTo(52, rowY - 8).lineTo(543, rowY - 8).strokeColor('#E8DDD0').lineWidth(0.5).stroke();
-    }
-
-    const totalsY = Math.max(rowY + 12, 380);
-    document.fillColor(warmGrey).font('Helvetica').fontSize(9).text('Subtotal', 350, totalsY, { width: 110 });
-    document.fillColor(charcoal).text(formatMoney(totals.subtotal), 465, totalsY, { width: 66, align: 'right' });
-    document.fillColor(warmGrey).text(`Tax (${data.taxRate.toFixed(2)}%)`, 350, totalsY + 22, { width: 110 });
-    document.fillColor(charcoal).text(formatMoney(totals.taxAmount), 465, totalsY + 22, { width: 66, align: 'right' });
-    document.rect(342, totalsY + 48, 201, 34).fill('#F5ECD8');
-    document.fillColor(charcoal).font('Helvetica-Bold').fontSize(10).text('TOTAL (INR)', 354, totalsY + 60);
-    document.fillColor(charcoal).text(formatMoney(totals.total), 465, totalsY + 60, { width: 66, align: 'right' });
-
-    document.moveTo(52, 752).lineTo(543, 752).strokeColor(gold).lineWidth(0.75).stroke();
-    document.fillColor(warmGrey).font('Helvetica').fontSize(8)
-      .text('Thank you for choosing Mandarin Orchid Resort.', 52, 767, { align: 'center', width: 491 });
-    document.end();
-  });
+// The built-in PDF fonts only cover Western (WinAnsi) characters. Map common
+// punctuation and replace anything else so unusual names never break generation.
+const replacements: Record<string, string> = { '‘': "'", '’': "'", '“': '"', '”': '"', '–': '-', '—': '-', '…': '...', '₹': 'Rs.' };
+export function pdfSafe(text: string) {
+  return [...text.normalize('NFC')].map(character => {
+    if (replacements[character]) return replacements[character];
+    const code = character.codePointAt(0)!;
+    if ((code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)) return character;
+    const stripped = character.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return /^[\x20-\x7e]$/.test(stripped) ? stripped : '?';
+  }).join('');
 }
 
-function formatMoney(amount: number) {
-  return `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (amount: number) => `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const date = (value: Date) => value.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+type TextOptions = { font: PDFFont; size: number; color?: ReturnType<typeof rgb>; width?: number; align?: 'left' | 'right' | 'center'; spacing?: number };
+
+export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(`Invoice ${data.invoiceNumber}`);
+  pdf.setAuthor('Mandarin Orchid Resort');
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const serif = await pdf.embedFont(StandardFonts.TimesRomanBold);
+  const totals = calculateTotals(data.lineItems, data.taxRate);
+
+  let page = pdf.addPage([595.28, 841.89]);
+  const height = page.getHeight();
+
+  /** Draws text using top-left coordinates, like the original layout. */
+  const text = (target: PDFPage, value: string, x: number, top: number, options: TextOptions) => {
+    const content = pdfSafe(value);
+    const spacing = options.spacing ?? 0;
+    const width = options.font.widthOfTextAtSize(content, options.size) + spacing * Math.max(0, content.length - 1);
+    const offset = options.width && options.align === 'right' ? options.width - width
+      : options.width && options.align === 'center' ? (options.width - width) / 2 : 0;
+    target.drawText(content, {
+      x: x + offset, y: height - top - options.size * 0.8, size: options.size, font: options.font,
+      color: options.color ?? charcoal, characterSpacing: spacing || undefined,
+    } as Parameters<PDFPage['drawText']>[1]);
+  };
+  const line = (target: PDFPage, x1: number, top: number, x2: number, color: ReturnType<typeof rgb>, thickness: number) =>
+    target.drawLine({ start: { x: x1, y: height - top }, end: { x: x2, y: height - top }, color, thickness });
+  const box = (target: PDFPage, x: number, top: number, width: number, boxHeight: number, color: ReturnType<typeof rgb>) =>
+    target.drawRectangle({ x, y: height - top - boxHeight, width, height: boxHeight, color });
+  const wrap = (value: string, font: PDFFont, size: number, maxWidth: number) => {
+    const lines: string[] = [];
+    let current = '';
+    for (const word of pdfSafe(value).split(/\s+/)) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(candidate, size) <= maxWidth || !current) current = candidate;
+      else {
+        lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  box(page, 0, 0, page.getWidth(), 9, gold);
+  if (data.logoPng) {
+    try {
+      const logo = await pdf.embedPng(data.logoPng);
+      const scale = Math.min(118 / logo.width, 70 / logo.height);
+      page.drawImage(logo, { x: 52, y: height - 34 - logo.height * scale, width: logo.width * scale, height: logo.height * scale });
+    } catch { /* invoice remains valid without the logo */ }
+  }
+  text(page, 'INVOICE', 340, 48, { font: serif, size: 28, width: 203, align: 'right' });
+  text(page, 'MANDARIN ORCHID RESORT', 340, 82, { font: regular, size: 9, color: warmGrey, width: 203, align: 'right' });
+
+  line(page, 52, 128, 543, gold, 1);
+  text(page, 'INVOICE DETAILS', 52, 148, { font: bold, size: 8, color: gold, spacing: 1.5 });
+  text(page, `Invoice number  ${data.invoiceNumber}`, 52, 168, { font: regular, size: 10 });
+  text(page, `Issue date  ${date(data.issueDate)}`, 52, 184, { font: regular, size: 10 });
+  text(page, 'BILLED TO', 310, 148, { font: bold, size: 8, color: gold, spacing: 1.5 });
+  text(page, data.guestName, 310, 168, { font: regular, size: 10 });
+  if (data.guestEmail) text(page, data.guestEmail, 310, 184, { font: regular, size: 9, color: warmGrey });
+  text(page, `Stay: ${date(data.stayStart)} - ${date(data.stayEnd)}`, 52, 224, { font: regular, size: 9, color: warmGrey });
+
+  const tableHeader = (target: PDFPage, top: number) => {
+    box(target, 52, top, 491, 28, charcoal);
+    text(target, 'DESCRIPTION', 64, top + 10, { font: bold, size: 8, color: white });
+    text(target, 'QTY', 350, top + 10, { font: bold, size: 8, color: white, width: 40, align: 'right' });
+    text(target, 'RATE', 395, top + 10, { font: bold, size: 8, color: white, width: 70, align: 'right' });
+    text(target, 'AMOUNT', 465, top + 10, { font: bold, size: 8, color: white, width: 66, align: 'right' });
+  };
+  tableHeader(page, 264);
+  let rowY = 302;
+  for (const item of data.lineItems) {
+    const descriptionLines = wrap(item.description, regular, 9, 270);
+    const rowHeight = Math.max(28, descriptionLines.length * 12 + 16);
+    if (rowY + rowHeight > 700) {
+      page = pdf.addPage([595.28, 841.89]);
+      tableHeader(page, 52);
+      rowY = 90;
+    }
+    descriptionLines.forEach((descriptionLine, index) => text(page, descriptionLine, 64, rowY + index * 12, { font: regular, size: 9 }));
+    text(page, String(item.quantity), 350, rowY, { font: regular, size: 9, width: 40, align: 'right' });
+    text(page, money(item.unitPrice), 395, rowY, { font: regular, size: 9, width: 70, align: 'right' });
+    text(page, money(item.quantity * item.unitPrice), 465, rowY, { font: regular, size: 9, width: 66, align: 'right' });
+    rowY += rowHeight;
+    line(page, 52, rowY - 8, 543, rule, 0.5);
+  }
+
+  if (rowY + 110 > 740) {
+    page = pdf.addPage([595.28, 841.89]);
+    rowY = 60;
+  }
+  const totalsY = Math.max(rowY + 12, 380);
+  text(page, 'Subtotal', 350, totalsY, { font: regular, size: 9, color: warmGrey });
+  text(page, money(totals.subtotal), 440, totalsY, { font: regular, size: 9, width: 91, align: 'right' });
+  text(page, `Tax (${data.taxRate.toFixed(2)}%)`, 350, totalsY + 22, { font: regular, size: 9, color: warmGrey });
+  text(page, money(totals.taxAmount), 440, totalsY + 22, { font: regular, size: 9, width: 91, align: 'right' });
+  box(page, 342, totalsY + 48, 201, 34, goldPale);
+  text(page, 'TOTAL (INR)', 354, totalsY + 60, { font: bold, size: 10 });
+  text(page, money(totals.total), 430, totalsY + 60, { font: bold, size: 10, width: 101, align: 'right' });
+
+  line(page, 52, 752, 543, gold, 0.75);
+  text(page, 'Thank you for choosing Mandarin Orchid Resort.', 52, 767, { font: regular, size: 8, color: warmGrey, width: 491, align: 'center' });
+
+  return pdf.save();
 }

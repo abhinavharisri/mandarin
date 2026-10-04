@@ -1,31 +1,45 @@
 # Mandarin Orchid Resort admin
 
-The public website remains static. The React dashboard and a small serverless API run in the same Vercel project. Vercel Blob stores gallery images and metadata as public files, and invoice PDFs, source bills, and invoice records as private files. There is no database or separate API host.
+The public website stays static. The React dashboard (`admin/`) and a small API run on **Cloudflare Pages**: the API is a Pages Function (`functions/api/[[path]].ts`, code in `server/src/`) and files are stored in a private **R2** bucket. There is no database or separate server.
 
 ## Local preview — no setup required
 
-Run `npm run dev` in the repository folder and open `http://localhost:5173/admin/`. The public website is served at `http://localhost:5173/` alongside it, so links between the dashboard and the site work locally. Local files are saved under the ignored `data/` folder. The local-only sign-in password is `mandarin-local-password`. This local default is deliberately rejected in production.
+Run `npm install`, then `npm run dev`, and open:
 
-## Publish on Vercel
+- Website: `http://localhost:5173/`
+- Dashboard: `http://localhost:5173/admin/` (local password `mandarin-local-password`)
 
-1. Create and connect a Vercel Blob store to the project.
-2. Set a unique `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET` (generate one with `openssl rand -hex 32`) in the Vercel project settings.
-3. Redeploy. The Vercel API uses Blob for persistent files; no database is required.
+`npm run dev` runs Cloudflare's local Pages runtime (port 8788, with a simulated R2 bucket saved under the ignored `data/wrangler/` folder) and the Vite dashboard dev server. The local password only works on `localhost`; to use your own locally, copy `.dev.vars.example` to `.dev.vars`.
 
-`npm run build` copies only the public pages, `css/`, `js/` and `images/` into `dist/` and builds the dashboard into `dist/admin`, so source code and configuration are never served. Vercel deploys `dist/` plus the `api/` function.
+## Publish on Cloudflare Pages (one-time setup)
 
-The admin password is checked only by the server API. Repeated wrong passwords are throttled (5 attempts per 15 minutes, per server instance), state-changing requests from other sites are rejected, and the dashboard locks after 30 minutes of inactivity. Successful sign-in uses a signed, HttpOnly, same-site cookie with an eight-hour lifetime. Neither the password nor the Blob token is included in the dashboard bundle.
+1. **R2 → Create bucket**, e.g. `mandarin-orchid-admin`. Keep it private.
+2. **Workers & Pages → your Pages project → Settings → Build**:
+   - Build command: `npm run build`
+   - Build output directory: `dist`
+3. **Settings → Bindings → Add → R2 bucket**: variable name `BUCKET`, choose the bucket from step 1 (for Production, and Preview if you use previews).
+4. **Settings → Variables and Secrets** (type *Secret*):
+   - `ADMIN_PASSWORD`: at least 12 characters.
+   - `ADMIN_SESSION_SECRET`: at least 32 random characters (`openssl rand -hex 32`).
+5. Push to GitHub (or **Deployments → Retry deployment**). Node 22 is selected by `.node-version`.
+
+Until steps 2–4 are done, `/admin` shows a message explaining what is missing; the public website is unaffected.
+
+## Security
+
+- The password is checked only by the API. Sign-in sets a signed, HttpOnly, `SameSite=Strict`, `Secure` cookie that lasts eight hours; the dashboard also locks after 30 minutes of inactivity.
+- Repeated wrong passwords are throttled (5 attempts per 15 minutes per Worker instance). Cross-site write requests are rejected.
+- Only `dist/` is published, so source code and configuration are never served. `_headers` adds a strict Content Security Policy and no-index headers to `/admin`.
+
 ## Reaching the dashboard
 
-There is no visible admin link on the public site. Go to `/admin` directly, type `orchid` anywhere on the website (outside a form field), or press and hold the header logo for about a second; a "Staff entrance" screen then opens the sign-in page. A normal click on the logo still goes to the home page.
+There is no visible admin link on the public site. Go to `/admin` directly, type `orchid` anywhere on the website (outside a form field), or press and hold the header logo for about a second.
 
 ## Gallery and invoices
 
-- The existing gallery photos are included in the dashboard. Removing one hides it from the public gallery without deleting the original website image. New photos are optimized to WebP and saved as public Blob files with their small JSON metadata files. The static gallery remains as a fallback if the API is unavailable.
-- Uploaded bill PDFs, generated invoices, and invoice metadata are saved as private Blob files. Earlier invoices can be downloaded again in the dashboard.
-- Removing an invoice permanently deletes its PDF, attached bill and record, and requires the admin password to be entered again. The server checks it and wrong attempts count toward the sign-in throttle.
-- Invoice references are unique, randomly generated `MO-YYYY-XXXXXXXXXXXX` values rather than sequential numbers, so invoice creation needs no database or shared counter.
-- Attached bills are stored but not OCR-parsed. Tax defaults to 0%; confirm your accounting requirements before issuing invoices as official tax documents. Invoices are downloadable and not emailed.
-- Uploads are capped at 4 MB to fit Vercel Functions' request-size limit; larger bills should be compressed before attaching.
-
-The admin and public photo gallery are hosted on Vercel; your domain can remain registered with GoDaddy and point to Vercel as it does today.
+- The existing gallery photos are included in the dashboard. Removing one hides it from the public gallery without deleting the original website image.
+- New photos are resized (max 2400px) and converted to WebP in the browser before upload, which also strips location metadata. Originals up to 25 MB are accepted. They are served from `/api/files/gallery/…`. The static gallery remains as a fallback if the API is unavailable.
+- Invoice PDFs, attached bills and invoice records are private R2 objects, downloadable only when signed in. Invoice numbers are random `MO-YYYY-XXXXXXXXXXXX` values, so no counter or database is needed.
+- PDFs use the standard PDF fonts, so amounts show as "Rs." and characters outside Western alphabets (for example Tamil script) appear as "?". Enter guest names in English letters for invoices.
+- Removing an invoice permanently deletes its PDF, attached bill and record, and requires the admin password again.
+- Attached bills are stored but not read automatically. Tax defaults to 0%; confirm your accounting requirements before issuing invoices as official tax documents. Invoices are downloadable and not emailed.

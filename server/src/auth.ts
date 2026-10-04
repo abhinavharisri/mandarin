@@ -1,130 +1,105 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import { NextFunction, Request, Response } from 'express';
-import { config } from './config.js';
+import { AdminConfig, HttpError } from './env.js';
 
 const cookieName = 'mo_admin_session';
 const sessionDuration = 8 * 60 * 60;
+const encoder = new TextEncoder();
 
-function signature(payload: string) {
-  return createHmac('sha256', config.ADMIN_SESSION_SECRET).update(payload).digest('base64url');
+/** Constant-time comparison for equal-length secrets. */
+function safeEqual(a: string, b: string) {
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < Math.max(left.length, right.length); index++) {
+    difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
+  }
+  return difference === 0;
 }
 
+const toBase64Url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+const fromBase64Url = (value: string) =>
+  atob(value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - (value.length % 4)) % 4));
+
+async function signature(payload: string, secret: string) {
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return toBase64Url(new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(payload))));
+}
+
+export const passwordMatches = (password: string, config: AdminConfig) => safeEqual(password, config.password);
+
 function cookieValue(request: Request) {
-  const cookieHeader = request.headers.cookie;
-  if (!cookieHeader) return '';
-  const cookie = cookieHeader.split(';').map(value => value.trim())
+  const cookie = (request.headers.get('cookie') || '').split(';').map(value => value.trim())
     .find(value => value.startsWith(`${cookieName}=`));
   return cookie?.slice(cookieName.length + 1) || '';
 }
 
-/** Constant-time comparison against the configured admin password. */
-export function passwordMatches(password: string) {
-  const submitted = Buffer.from(password);
-  const expected = Buffer.from(config.ADMIN_PASSWORD);
-  return submitted.length === expected.length && timingSafeEqual(submitted, expected);
-}
-
 /** Returns the session's expiry (Unix seconds) when the cookie is valid, otherwise null. */
-export function sessionExpiry(request: Request) {
+export async function sessionExpiry(request: Request, config: AdminConfig) {
   const [payload, suppliedSignature, extra] = cookieValue(request).split('.');
   if (!payload || !suppliedSignature || extra) return null;
-
-  const expected = Buffer.from(signature(payload));
-  const supplied = Buffer.from(suppliedSignature);
-  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) return null;
-
+  if (!safeEqual(await signature(payload, config.sessionSecret), suppliedSignature)) return null;
   try {
-    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { expiresAt?: number };
-    return typeof session.expiresAt === 'number' && session.expiresAt > Math.floor(Date.now() / 1000)
-      ? session.expiresAt
-      : null;
+    const session = JSON.parse(fromBase64Url(payload)) as { expiresAt?: number };
+    return typeof session.expiresAt === 'number' && session.expiresAt > Math.floor(Date.now() / 1000) ? session.expiresAt : null;
   } catch {
     return null;
   }
 }
 
-export function isAdmin(request: Request) {
-  return sessionExpiry(request) !== null;
+const secureFlag = (request: Request) => new URL(request.url).protocol === 'https:' ? ['Secure'] : [];
+
+export async function sessionCookie(request: Request, config: AdminConfig) {
+  const expiresAt = Math.floor(Date.now() / 1000) + sessionDuration;
+  const payload = toBase64Url(encoder.encode(JSON.stringify({ expiresAt })));
+  const cookie = [
+    `${cookieName}=${payload}.${await signature(payload, config.sessionSecret)}`,
+    'Path=/api/admin', 'HttpOnly', 'SameSite=Strict', `Max-Age=${sessionDuration}`, ...secureFlag(request),
+  ].join('; ');
+  return { cookie, expiresAt };
 }
 
-// Best-effort brute-force protection. State is per server instance, so it slows
+export const clearedSessionCookie = (request: Request) =>
+  [`${cookieName}=`, 'Path=/api/admin', 'HttpOnly', 'SameSite=Strict', 'Max-Age=0', ...secureFlag(request)].join('; ');
+
+export async function requireAdmin(request: Request, config: AdminConfig) {
+  if (await sessionExpiry(request, config) === null) throw new HttpError(401, 'Sign in to continue.');
+}
+
+// Best-effort brute-force protection. State lives in one Worker isolate, so it slows
 // guessing rather than guaranteeing a global limit.
 const loginWindow = 15 * 60 * 1000;
-const maxFailedLogins = 5;
-const failedLogins = new Map<string, { count: number; resetAt: number }>();
+const maxFailedAttempts = 5;
+const failedAttempts = new Map<string, { count: number; resetAt: number }>();
+const clientKey = (request: Request) => request.headers.get('cf-connecting-ip') || 'local';
 
-function clientKey(request: Request) {
-  return String(request.get('x-forwarded-for') || request.socket.remoteAddress || 'unknown').split(',')[0].trim();
+export function assertNotThrottled(request: Request) {
+  const entry = failedAttempts.get(clientKey(request));
+  if (!entry || entry.resetAt <= Date.now() || entry.count < maxFailedAttempts) return;
+  const retryAfter = Math.ceil((entry.resetAt - Date.now()) / 1000);
+  throw new HttpError(429, `Too many attempts. Try again in ${Math.ceil(retryAfter / 60)} minutes.`, { 'Retry-After': String(retryAfter) });
 }
 
-/** Seconds until the client may try again, or 0 when sign-in is allowed. */
-export function loginRetryAfter(request: Request) {
-  const entry = failedLogins.get(clientKey(request));
-  if (!entry || entry.resetAt <= Date.now()) return 0;
-  return entry.count >= maxFailedLogins ? Math.ceil((entry.resetAt - Date.now()) / 1000) : 0;
-}
-
-export function recordLoginAttempt(request: Request, succeeded: boolean) {
+export function recordAttempt(request: Request, succeeded: boolean) {
   const key = clientKey(request);
   if (succeeded) {
-    failedLogins.delete(key);
+    failedAttempts.delete(key);
     return;
   }
   const now = Date.now();
-  for (const [storedKey, entry] of failedLogins) if (entry.resetAt <= now) failedLogins.delete(storedKey);
-  const entry = failedLogins.get(key);
+  for (const [storedKey, entry] of failedAttempts) if (entry.resetAt <= now) failedAttempts.delete(storedKey);
+  const entry = failedAttempts.get(key);
   if (entry && entry.resetAt > now) entry.count += 1;
-  else failedLogins.set(key, { count: 1, resetAt: now + loginWindow });
+  else failedAttempts.set(key, { count: 1, resetAt: now + loginWindow });
 }
 
 /** Rejects cross-site state-changing requests (defence in depth alongside SameSite=Strict). */
-export function requireSameOrigin(request: Request, response: Response, next: NextFunction) {
-  const origin = request.get('origin');
-  if (['GET', 'HEAD', 'OPTIONS'].includes(request.method) || !origin) {
-    next();
-    return;
-  }
-  const forwardedHost = request.get('x-forwarded-host') || request.get('host');
+export function assertSameOrigin(request: Request) {
+  const origin = request.headers.get('origin');
+  if (['GET', 'HEAD', 'OPTIONS'].includes(request.method) || !origin) return;
   let originHost = '';
   try { originHost = new URL(origin).host; } catch { /* rejected below */ }
-  if (!originHost || originHost !== forwardedHost) {
-    response.status(403).json({ error: 'This request was blocked because it came from another site.' });
-    return;
+  const allowed = new Set([new URL(request.url).host, request.headers.get('host')]);
+  if (!originHost || !allowed.has(originHost)) {
+    throw new HttpError(403, 'This request was blocked because it came from another site.');
   }
-  next();
-}
-
-export function setAdminSession(request: Request, response: Response) {
-  const expiresAt = Math.floor(Date.now() / 1000) + sessionDuration;
-  const payload = Buffer.from(JSON.stringify({ expiresAt })).toString('base64url');
-  const secure = request.secure || request.get('x-forwarded-proto') === 'https';
-  response.setHeader('Set-Cookie', [
-    `${cookieName}=${payload}.${signature(payload)}`,
-    'Path=/api/admin',
-    'HttpOnly',
-    'SameSite=Strict',
-    `Max-Age=${sessionDuration}`,
-    ...(secure ? ['Secure'] : []),
-  ].join('; '));
-  return expiresAt;
-}
-
-export function clearAdminSession(request: Request, response: Response) {
-  const secure = request.secure || request.get('x-forwarded-proto') === 'https';
-  response.setHeader('Set-Cookie', [
-    `${cookieName}=`,
-    'Path=/api/admin',
-    'HttpOnly',
-    'SameSite=Strict',
-    'Max-Age=0',
-    ...(secure ? ['Secure'] : []),
-  ].join('; '));
-}
-
-export function requireAdmin(request: Request, response: Response, next: NextFunction) {
-  if (!isAdmin(request)) {
-    response.status(401).json({ error: 'Sign in to continue.' });
-    return;
-  }
-  next();
 }
