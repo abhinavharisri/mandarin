@@ -70,11 +70,37 @@ const mobileNav = document.querySelector('.mobile-nav');
 const mobileClose = document.querySelector('.mobile-nav-close');
 
 if (navToggle && mobileNav) {
-  navToggle.addEventListener('click', () => mobileNav.classList.add('open'));
-  if (mobileClose) mobileClose.addEventListener('click', () => mobileNav.classList.remove('open'));
-  mobileNav.querySelectorAll('.mobile-nav-link').forEach(link => {
-    link.addEventListener('click', () => mobileNav.classList.remove('open'));
+  const closeMobileNav = () => {
+    mobileNav.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('mobile-menu-open');
+  };
+
+  navToggle.addEventListener('click', () => {
+    mobileNav.classList.add('open');
+    navToggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('mobile-menu-open');
   });
+  if (mobileClose) mobileClose.addEventListener('click', closeMobileNav);
+  mobileNav.querySelectorAll('.mobile-nav-link').forEach(link => {
+    link.addEventListener('click', closeMobileNav);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && mobileNav.classList.contains('open')) {
+      closeMobileNav();
+      navToggle.focus();
+    }
+  });
+}
+
+/* Keep the floating contact action clear of the home-page booking CTA on phones. */
+const heroActions = document.querySelector('.hero-actions');
+const whatsappFab = document.querySelector('.whatsapp-fab');
+if (heroActions && whatsappFab) {
+  const heroActionsObserver = new IntersectionObserver(([entry]) => {
+    whatsappFab.classList.toggle('hero-actions-visible', entry.isIntersecting);
+  });
+  heroActionsObserver.observe(heroActions);
 }
 
 /* ===== Scroll Reveal (IntersectionObserver) ===== */
