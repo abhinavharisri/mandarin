@@ -1,7 +1,12 @@
 import { AdminConfig, HttpError } from './env.js';
 
 const cookieName = 'mo_admin_session';
-const sessionDuration = 8 * 60 * 60;
+/** Sessions end after 30 minutes without activity; each signed-in request extends them. */
+export const sessionIdleSeconds = 30 * 60;
+/** Even with constant activity, everyone signs in again after 12 hours. */
+export const sessionMaxSeconds = 12 * 60 * 60;
+
+export type Session = { expiresAt: number; issuedAt: number };
 const encoder = new TextEncoder();
 
 /** Constant-time comparison for equal-length secrets. */
@@ -33,27 +38,35 @@ function cookieValue(request: Request) {
   return cookie?.slice(cookieName.length + 1) || '';
 }
 
-/** Returns the session's expiry (Unix seconds) when the cookie is valid, otherwise null. */
-export async function sessionExpiry(request: Request, config: AdminConfig) {
+/** Returns the verified session when the cookie is valid and unexpired, otherwise null. */
+export async function readSession(request: Request, config: AdminConfig, now = Math.floor(Date.now() / 1000)): Promise<Session | null> {
   const [payload, suppliedSignature, extra] = cookieValue(request).split('.');
   if (!payload || !suppliedSignature || extra) return null;
   if (!safeEqual(await signature(payload, config.sessionSecret), suppliedSignature)) return null;
   try {
-    const session = JSON.parse(fromBase64Url(payload)) as { expiresAt?: number };
-    return typeof session.expiresAt === 'number' && session.expiresAt > Math.floor(Date.now() / 1000) ? session.expiresAt : null;
+    const session = JSON.parse(fromBase64Url(payload)) as Partial<Session>;
+    if (typeof session.expiresAt !== 'number' || typeof session.issuedAt !== 'number') return null;
+    if (session.expiresAt <= now || session.issuedAt + sessionMaxSeconds <= now) return null;
+    return { expiresAt: session.expiresAt, issuedAt: session.issuedAt };
   } catch {
     return null;
   }
 }
 
+export async function sessionExpiry(request: Request, config: AdminConfig) {
+  return (await readSession(request, config))?.expiresAt ?? null;
+}
+
 const secureFlag = (request: Request) => new URL(request.url).protocol === 'https:' ? ['Secure'] : [];
 
-export async function sessionCookie(request: Request, config: AdminConfig) {
-  const expiresAt = Math.floor(Date.now() / 1000) + sessionDuration;
-  const payload = toBase64Url(encoder.encode(JSON.stringify({ expiresAt })));
+/** Issues (or renews) a session lasting 30 idle minutes, capped at 12 hours from sign-in. */
+export async function sessionCookie(request: Request, config: AdminConfig, issuedAt?: number, now = Math.floor(Date.now() / 1000)) {
+  const started = issuedAt ?? now;
+  const expiresAt = Math.min(now + sessionIdleSeconds, started + sessionMaxSeconds);
+  const payload = toBase64Url(encoder.encode(JSON.stringify({ expiresAt, issuedAt: started })));
   const cookie = [
     `${cookieName}=${payload}.${await signature(payload, config.sessionSecret)}`,
-    'Path=/api/admin', 'HttpOnly', 'SameSite=Strict', `Max-Age=${sessionDuration}`, ...secureFlag(request),
+    'Path=/api/admin', 'HttpOnly', 'SameSite=Strict', `Max-Age=${Math.max(0, expiresAt - now)}`, ...secureFlag(request),
   ].join('; ');
   return { cookie, expiresAt };
 }
@@ -62,7 +75,9 @@ export const clearedSessionCookie = (request: Request) =>
   [`${cookieName}=`, 'Path=/api/admin', 'HttpOnly', 'SameSite=Strict', 'Max-Age=0', ...secureFlag(request)].join('; ');
 
 export async function requireAdmin(request: Request, config: AdminConfig) {
-  if (await sessionExpiry(request, config) === null) throw new HttpError(401, 'Sign in to continue.');
+  const session = await readSession(request, config);
+  if (!session) throw new HttpError(401, 'Your session has ended. Please sign in again.');
+  return session;
 }
 
 // Best-effort brute-force protection. State lives in one Worker isolate, so it slows

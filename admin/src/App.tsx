@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Billing } from './Billing';
-import { api, unauthorizedEvent } from './client';
+import { api, sessionRenewedEvent, unauthorizedEvent } from './client';
 import { duration } from './format';
 import { Gallery } from './Gallery';
 import { Gate, GateMode } from './Gate';
@@ -20,6 +20,9 @@ const views: { id: View; label: string; title: string; subtitle: string; icon: s
   { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
 ];
 const idleLimitMs = 30 * 60 * 1000;
+/** While someone is actively using the dashboard, renew the session once it has under 25 minutes left. */
+const renewBelowSeconds = 25 * 60;
+const recentActivityMs = 2 * 60 * 1000;
 const gateDurationMs = 1900;
 const gateExitMs = 650;
 const themeKey = 'mo-admin-theme-choice';
@@ -128,28 +131,49 @@ export function App() {
       .catch(error => notify(error instanceof Error ? error.message : 'Could not load the menu.', true));
   }, [authenticated, refresh, notify]);
 
-  // Session countdown, expiry and idle auto-lock.
+  // Session countdown, expiry, keep-alive while active, and idle auto-lock.
+  const expiresAt = useRef<number | null>(null);
+  expiresAt.current = session?.expiresAt ?? null;
+
+  useEffect(() => {
+    const onRenewed = (event: Event) => {
+      const next = (event as CustomEvent<number>).detail;
+      setSession(current => current?.authenticated ? { ...current, expiresAt: next } : current);
+    };
+    window.addEventListener(sessionRenewedEvent, onRenewed);
+    return () => window.removeEventListener(sessionRenewedEvent, onRenewed);
+  }, []);
+
   useEffect(() => {
     if (!authenticated) return;
     lastActivity.current = Date.now();
+    let renewing = false;
     const markActive = () => { lastActivity.current = Date.now(); };
     const activityEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
     activityEvents.forEach(name => window.addEventListener(name, markActive, { passive: true }));
     const timer = window.setInterval(() => {
       const current = Date.now();
       setNow(current);
-      if (session?.expiresAt && current / 1000 >= session.expiresAt) {
-        lock('Your secure session expired. Please sign in again.');
+      const secondsLeft = expiresAt.current ? expiresAt.current - current / 1000 : Infinity;
+      if (secondsLeft <= 0) {
+        lock('Your secure session ended. Please sign in again.');
       } else if (current - lastActivity.current > idleLimitMs) {
         api('/api/admin/logout', { method: 'POST' }).catch(() => {});
         lock('Locked after 30 minutes of inactivity.');
+      } else if (!renewing && secondsLeft < renewBelowSeconds && current - lastActivity.current < recentActivityMs) {
+        // Someone is reading or typing without saving anything: keep their session alive.
+        renewing = true;
+        api<Session>('/api/admin/session')
+          .then(next => { if (!next.authenticated) lock('Your session has ended. Please sign in again.'); })
+          .catch(() => {})
+          .finally(() => { renewing = false; });
       }
     }, 15_000);
     return () => {
       window.clearInterval(timer);
       activityEvents.forEach(name => window.removeEventListener(name, markActive));
     };
-  }, [authenticated, session?.expiresAt, lock]);
+  }, [authenticated, lock]);
 
   const navigate = (next: View) => {
     if (next === view) return;
@@ -210,7 +234,7 @@ export function App() {
         <div className="sidebar-footer">
           <div className="session-card">
             <Icon name="shield" size={16} />
-            <div><b>Secure session</b><small>{remaining !== null ? `Expires in ${duration(remaining)}` : 'Active'} · auto-locks when idle</small></div>
+            <div><b>Secure session</b><small>{remaining !== null ? `Locks in ${duration(remaining)} if idle` : 'Active'} · stays open while you work</small></div>
           </div>
           <button type="button" className="signout" onClick={signOut}><Icon name="logout" size={16} />Sign out</button>
         </div>

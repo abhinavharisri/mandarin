@@ -27,7 +27,7 @@ Until steps 2–4 are done, `/admin` shows a message explaining what is missing;
 
 ## Security
 
-- The password is checked only by the API. Sign-in sets a signed, HttpOnly, `SameSite=Strict`, `Secure` cookie that lasts eight hours; the dashboard also locks after 30 minutes of inactivity.
+- The password is checked only by the API. Sign-in sets a signed, HttpOnly, `SameSite=Strict`, `Secure` cookie. Sessions end after **30 minutes without activity**: each signed-in request (and active use of the page) extends them, and everyone must sign in again **12 hours** after signing in regardless of activity.
 - Repeated wrong passwords are throttled (5 attempts per 15 minutes per Worker instance). Cross-site write requests are rejected.
 - Only `dist/` is published, so source code and configuration are never served. `_headers` adds a strict Content Security Policy and no-index headers to `/admin`.
 

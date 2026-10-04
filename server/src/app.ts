@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { z } from 'zod';
 import {
-  assertNotThrottled, assertSameOrigin, clearedSessionCookie, passwordMatches, recordAttempt, requireAdmin, sessionCookie, sessionExpiry,
+  assertNotThrottled, assertSameOrigin, clearedSessionCookie, passwordMatches, readSession, recordAttempt, requireAdmin, sessionCookie,
 } from './auth.js';
 import { adminConfig, Env, HttpError } from './env.js';
 import { json, jsonBody, noContent } from './http.js';
@@ -139,7 +139,8 @@ const pdfResponse = (pdf: Uint8Array | ReadableStream, filename: string, status 
 
 // ===== Routes =====
 
-async function route(request: Request, env: Env): Promise<Response> {
+/** `renewal` collects headers that extend the session; they are added to whatever response is sent. */
+async function route(request: Request, env: Env, renewal: Headers): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
   const method = request.method;
@@ -185,13 +186,19 @@ async function route(request: Request, env: Env): Promise<Response> {
   }
 
   if (path === '/api/admin/session' && method === 'GET') {
-    const expiresAt = await sessionExpiry(request, config);
-    return json({ authenticated: expiresAt !== null, expiresAt });
+    const session = await readSession(request, config);
+    if (!session) return json({ authenticated: false, expiresAt: null });
+    const renewed = await sessionCookie(request, config, session.issuedAt);
+    return json({ authenticated: true, expiresAt: renewed.expiresAt }, 200, { 'Set-Cookie': renewed.cookie, 'X-Session-Expires': String(renewed.expiresAt) });
   }
 
   if (path === '/api/admin/logout' && method === 'POST') return noContent({ 'Set-Cookie': clearedSessionCookie(request) });
 
-  await requireAdmin(request, config);
+  const session = await requireAdmin(request, config);
+  // Activity keeps the session alive: every signed-in request restarts the 30-minute idle timer.
+  const renewed = await sessionCookie(request, config, session.issuedAt);
+  renewal.append('Set-Cookie', renewed.cookie);
+  renewal.set('X-Session-Expires', String(renewed.expiresAt));
 
   if (segments[1] === 'menu') {
     const response = await menuRoutes(request, bucket, path);
@@ -371,8 +378,9 @@ async function route(request: Request, env: Env): Promise<Response> {
 /** Entry point for every /api request. */
 export async function handleApi(request: Request, env: Env): Promise<Response> {
   let response: Response;
+  const renewal = new Headers();
   try {
-    response = await route(request, env);
+    response = await route(request, env, renewal);
   } catch (error) {
     if (error instanceof HttpError) response = json({ error: error.message }, error.status, error.headers);
     else {
@@ -381,6 +389,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     }
   }
   const headers = new Headers(response.headers);
+  renewal.forEach((value, name) => headers.append(name, value));
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'DENY');
   headers.set('Referrer-Policy', 'same-origin');

@@ -65,7 +65,7 @@ export function Login({ onSignedIn, message }: { onSignedIn: (session: Session) 
           </form>
           <ul className="trust-list">
             <li><Icon name="shield" size={14} /> Encrypted, HttpOnly session</li>
-            <li><Icon name="lock" size={14} /> Auto-locks when idle</li>
+            <li><Icon name="lock" size={14} /> Locks after 30 min idle</li>
           </ul>
         </div>
       </section>
