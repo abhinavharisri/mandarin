@@ -40,7 +40,8 @@ const lineSchema = z.array(z.object({
   description: z.string().trim().min(1).max(180),
   quantity: z.number().int().min(1).max(9999),
   unitPrice: z.number().min(0).max(10_000_000),
-})).min(1).max(30);
+  section: z.string().trim().max(60).optional(),
+})).min(1).max(80);
 
 const gallerySeeds = [
   ['livingroom', 'Living room interior with ornate wooden sofa and warm lighting', 'common', 1600, [480, 960, 1600, 2048, 2400, 3200], 3200],
@@ -282,6 +283,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       guestEmail: z.union([z.string().email().max(254), z.literal('')]).optional(),
       stayStart: z.string().date(),
       stayEnd: z.string().date(),
+      stayLabel: z.string().trim().max(60).optional(),
       taxRate: z.coerce.number().min(0).max(100).default(0),
       lineItems: z.string().transform((value, context) => {
         try { return JSON.parse(value) as unknown; }
@@ -295,6 +297,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       guestEmail: form.get('guestEmail') ?? '',
       stayStart: form.get('stayStart'),
       stayEnd: form.get('stayEnd'),
+      stayLabel: form.get('stayLabel') ?? undefined,
       taxRate: form.get('taxRate') ?? 0,
       lineItems: form.get('lineItems'),
     });
@@ -320,6 +323,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       guestEmail: input.data.guestEmail || undefined,
       stayStart: new Date(`${input.data.stayStart}T00:00:00+05:30`),
       stayEnd: new Date(`${input.data.stayEnd}T00:00:00+05:30`),
+      stayLabel: input.data.stayLabel || undefined,
       taxRate: input.data.taxRate,
       lineItems,
       logoPng: await logoBytes(env, request),

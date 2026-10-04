@@ -1,6 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
 
-export type InvoiceLine = { description: string; quantity: number; unitPrice: number };
+export type InvoiceLine = { description: string; quantity: number; unitPrice: number; section?: string };
 export type InvoiceData = {
   invoiceNumber: string;
   issueDate: Date;
@@ -8,6 +8,8 @@ export type InvoiceData = {
   guestEmail?: string;
   stayStart: Date;
   stayEnd: Date;
+  /** Optional room or villa name, e.g. "Villa 1". */
+  stayLabel?: string;
   taxRate: number;
   lineItems: InvoiceLine[];
   /** PNG bytes for the resort logo; the header is drawn without it when absent. */
@@ -107,7 +109,9 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   text(page, 'BILLED TO', 310, 148, { font: bold, size: 8, color: gold, spacing: 1.5 });
   text(page, data.guestName, 310, 168, { font: regular, size: 10 });
   if (data.guestEmail) text(page, data.guestEmail, 310, 184, { font: regular, size: 9, color: warmGrey });
-  text(page, `Stay: ${date(data.stayStart)} - ${date(data.stayEnd)}`, 52, 224, { font: regular, size: 9, color: warmGrey });
+  const nights = Math.max(0, Math.round((data.stayEnd.getTime() - data.stayStart.getTime()) / 86_400_000));
+  const stay = [data.stayLabel, `Stay: ${date(data.stayStart)} - ${date(data.stayEnd)}`, `${nights} night${nights === 1 ? '' : 's'}`].filter(Boolean).join('   ·   ');
+  text(page, stay, 52, 224, { font: regular, size: 9, color: warmGrey });
 
   const tableHeader = (target: PDFPage, top: number) => {
     box(target, 52, top, 491, 28, charcoal);
@@ -118,21 +122,38 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   };
   tableHeader(page, 264);
   let rowY = 302;
-  for (const item of data.lineItems) {
-    const descriptionLines = wrap(item.description, regular, 9, 270);
-    const rowHeight = Math.max(28, descriptionLines.length * 12 + 16);
-    if (rowY + rowHeight > 700) {
-      page = pdf.addPage([595.28, 841.89]);
-      tableHeader(page, 52);
-      rowY = 90;
+  const newPageIfNeeded = (needed: number) => {
+    if (rowY + needed <= 700) return;
+    page = pdf.addPage([595.28, 841.89]);
+    tableHeader(page, 52);
+    rowY = 90;
+  };
+  let currentSection: string | undefined;
+  data.lineItems.forEach((item, index) => {
+    const section = item.section?.trim() || undefined;
+    if (section && section !== currentSection) {
+      // Section heading with its subtotal, e.g. "2 OCT · BREAKFAST ............ Rs. 2,270.00"
+      let sectionTotal = 0;
+      for (let next = index; next < data.lineItems.length && (data.lineItems[next].section?.trim() || undefined) === section; next++) {
+        sectionTotal += data.lineItems[next].quantity * data.lineItems[next].unitPrice;
+      }
+      newPageIfNeeded(50);
+      box(page, 52, rowY - 6, 491, 22, goldPale);
+      text(page, section.toUpperCase(), 64, rowY, { font: bold, size: 8, color: hex('#8B6B14'), spacing: 1.2 });
+      text(page, money(sectionTotal), 440, rowY, { font: bold, size: 8, color: hex('#8B6B14'), width: 91, align: 'right' });
+      rowY += 26;
     }
-    descriptionLines.forEach((descriptionLine, index) => text(page, descriptionLine, 64, rowY + index * 12, { font: regular, size: 9 }));
+    currentSection = section;
+    const descriptionLines = wrap(item.description, regular, 9, 270);
+    const rowHeight = Math.max(22, descriptionLines.length * 12 + 10);
+    newPageIfNeeded(rowHeight);
+    descriptionLines.forEach((descriptionLine, lineIndex) => text(page, descriptionLine, 64, rowY + lineIndex * 12, { font: regular, size: 9 }));
     text(page, String(item.quantity), 350, rowY, { font: regular, size: 9, width: 40, align: 'right' });
     text(page, money(item.unitPrice), 395, rowY, { font: regular, size: 9, width: 70, align: 'right' });
     text(page, money(item.quantity * item.unitPrice), 465, rowY, { font: regular, size: 9, width: 66, align: 'right' });
     rowY += rowHeight;
-    line(page, 52, rowY - 8, 543, rule, 0.5);
-  }
+    line(page, 52, rowY - 7, 543, rule, 0.5);
+  });
 
   if (rowY + 110 > 740) {
     page = pdf.addPage([595.28, 841.89]);

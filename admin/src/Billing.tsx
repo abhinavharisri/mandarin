@@ -1,14 +1,17 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { DragEvent, FormEvent, Fragment, useMemo, useState } from 'react';
 import { api, downloadFile } from './client';
 import { inr, shortDate } from './format';
 import { InvoiceTable } from './InvoiceTable';
 import { InvoiceSummary, Notify } from './types';
+import type { NotesImport } from './notes/parseNotes';
 import { Icon, Modal, Segmented, Spinner, stagger } from './ui';
 
-type LineItem = { description: string; quantity: string; unitPrice: string };
+type LineItem = { description: string; quantity: string; unitPrice: string; section: string };
+type ImportSummary = { fileName: string; count: number; declaredTotal: number | null; skipped: string[] };
 type Period = 'all' | 'month' | '30d' | 'year';
 
-const emptyLine = (description = ''): LineItem => ({ description, quantity: '1', unitPrice: '' });
+const maxLines = 80;
+const emptyLine = (description = '', section = ''): LineItem => ({ description, quantity: '1', unitPrice: '', section });
 const quickItems = ['Room night', 'Villa night', 'Breakfast', 'Extra bed', 'Bonfire & barbecue', 'Airport transfer'];
 const taxPresets = ['0', '5', '12', '18'];
 
@@ -38,6 +41,10 @@ export function Billing({ invoices, loading, refresh, notify }: {
   const [guestEmail, setGuestEmail] = useState('');
   const [stayStart, setStayStart] = useState('');
   const [stayEnd, setStayEnd] = useState('');
+  const [stayLabel, setStayLabel] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<ImportSummary | null>(null);
+  const [draggingNotes, setDraggingNotes] = useState(false);
   const [taxRate, setTaxRate] = useState('0');
   const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
   const [sourceBill, setSourceBill] = useState<File | null>(null);
@@ -49,6 +56,7 @@ export function Billing({ invoices, loading, refresh, notify }: {
 
   const totals = totalsFor(lineItems, Number(taxRate));
   const nights = nightsBetween(stayStart, stayEnd);
+  const mismatch = imported?.declaredTotal != null && Math.abs(imported.declaredTotal - totals.subtotal) > 0.009;
 
   const records = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -70,17 +78,61 @@ export function Billing({ invoices, loading, refresh, notify }: {
     const blank = lines.findIndex(line => !line.description.trim());
     const quantity = description.endsWith('night') && nights ? String(nights) : '1';
     if (blank >= 0) return lines.map((line, i) => i === blank ? { ...line, description, quantity } : line);
-    return lines.length >= 30 ? lines : [...lines, { ...emptyLine(description), quantity }];
+    return lines.length >= maxLines ? lines : [...lines, { ...emptyLine(description, lines.at(-1)?.section), quantity }];
   });
+
+  /** Renames every line in a section, e.g. "3 Oct" → "3 Oct · Lunch". */
+  const renameSection = (from: string, to: string) =>
+    setLineItems(lines => lines.map(line => line.section === from ? { ...line, section: to } : line));
+
+  const importNotes = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      notify('That file is larger than 10 MB. Export the note again and retry.', true);
+      return;
+    }
+    setImporting(true);
+    try {
+      const { readNotesFile } = await import('./notes/readNotes');
+      const result: NotesImport = await readNotesFile(file);
+      const lines = result.lines.slice(0, maxLines);
+      setLineItems(lines.map(line => ({
+        description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section,
+      })));
+      if (result.stayStart) setStayStart(result.stayStart);
+      if (result.stayEnd) setStayEnd(result.stayEnd);
+      if (result.stayLabel) setStayLabel(result.stayLabel);
+      if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') setSourceBill(file);
+      setImported({
+        fileName: file.name,
+        count: lines.length,
+        declaredTotal: result.declaredTotal,
+        skipped: [...result.skipped, ...result.lines.slice(maxLines).map(line => line.source)],
+      });
+      notify(`Read ${lines.length} items from ${file.name}. Please review before generating.`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not read those notes.', true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const dropNotes = (event: DragEvent) => {
+    event.preventDefault();
+    setDraggingNotes(false);
+    importNotes(event.dataTransfer.files?.[0]);
+  };
 
   const resetForm = () => {
     setGuestName('');
     setGuestEmail('');
     setStayStart('');
     setStayEnd('');
+    setStayLabel('');
     setTaxRate('0');
     setLineItems([emptyLine()]);
     setSourceBill(null);
+    setImported(null);
   };
 
   const downloadInvoice = async (invoice: InvoiceSummary) => {
@@ -105,9 +157,11 @@ export function Billing({ invoices, loading, refresh, notify }: {
     form.set('guestEmail', guestEmail);
     form.set('stayStart', stayStart);
     form.set('stayEnd', stayEnd);
+    form.set('stayLabel', stayLabel);
     form.set('taxRate', taxRate);
     form.set('lineItems', JSON.stringify(lineItems.map(item => ({
       description: item.description, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice),
+      ...(item.section.trim() ? { section: item.section.trim() } : {}),
     }))));
     if (sourceBill) form.set('sourceBill', sourceBill);
     setBusy(true);
@@ -146,6 +200,38 @@ export function Billing({ invoices, loading, refresh, notify }: {
             <span className="muted small">PDF · INR</span>
           </div>
 
+          <div className={`notes-import${draggingNotes ? ' dragging' : ''}${importing ? ' busy' : ''}`}
+            onDragOver={event => { event.preventDefault(); setDraggingNotes(true); }}
+            onDragLeave={() => setDraggingNotes(false)} onDrop={dropNotes}>
+            <span className="notes-import-icon">{importing ? <Spinner /> : <Icon name="spark" size={20} />}</span>
+            <div>
+              <b>{importing ? 'Reading the notes…' : 'Import from staff notes'}</b>
+              <span>Drop the PDF exported from the notes app. Items, dates and villa are filled in for you to review.</span>
+            </div>
+            <span className="chip-button notes-import-button"><Icon name="upload" size={13} />Choose PDF</span>
+            <input type="file" accept="application/pdf,.pdf,text/plain,.txt" aria-label="Import staff notes PDF" disabled={importing}
+              onChange={event => { importNotes(event.target.files?.[0]); event.target.value = ''; }} />
+          </div>
+
+          {imported && (
+            <div className={`import-result${imported.skipped.length || mismatch ? ' warn' : ''}`} role="status">
+              <Icon name={imported.skipped.length || mismatch ? 'alert' : 'check'} size={16} />
+              <div>
+                <b>{imported.count} items imported from {imported.fileName}</b>
+                {imported.declaredTotal !== null && (
+                  mismatch
+                    ? <span>The notes say {inr(imported.declaredTotal)} but the items add up to {inr(totals.subtotal)}. Please check the lines.</span>
+                    : <span>Items add up to {inr(imported.declaredTotal)}, matching the total in the notes.</span>
+                )}
+                {imported.skipped.length > 0 && (
+                  <span>Not imported, please add manually if needed: {imported.skipped.map(line => `“${line}”`).join(', ')}</span>
+                )}
+                <span>Add the guest's name, then review and generate.</span>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setImported(null)} aria-label="Dismiss import summary"><Icon name="close" size={14} /></button>
+            </div>
+          )}
+
           <fieldset>
             <legend><span className="step">1</span>Guest & stay</legend>
             <div className="form-row">
@@ -155,6 +241,9 @@ export function Billing({ invoices, loading, refresh, notify }: {
             <div className="form-row">
               <label>Check-in<input type="date" value={stayStart} onChange={event => setStayStart(event.target.value)} required /></label>
               <label>Check-out<input type="date" value={stayEnd} min={stayStart || undefined} onChange={event => setStayEnd(event.target.value)} required /></label>
+            </div>
+            <div className="form-row">
+              <label><span>Room / villa <span className="optional">optional</span></span><input value={stayLabel} onChange={event => setStayLabel(event.target.value)} maxLength={60} placeholder="e.g. Villa 1" autoComplete="off" /></label>
             </div>
           </fieldset>
 
@@ -167,7 +256,18 @@ export function Billing({ invoices, loading, refresh, notify }: {
             </div>
             <div className="line-items">
               {lineItems.map((item, index) => (
-                <div className="line-item" key={index}>
+                <Fragment key={index}>
+                {item.section && item.section !== lineItems[index - 1]?.section && (
+                  <div className="line-section">
+                    <label className="line-section-name">
+                      <span className="visually-hidden">Section name</span>
+                      <input value={item.section} maxLength={60} onChange={event => renameSection(item.section, event.target.value)} />
+                    </label>
+                    <span className="line-section-total">{inr(lineItems.filter(line => line.section === item.section)
+                      .reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0), 0))}</span>
+                  </div>
+                )}
+                <div className="line-item">
                   <label>Description<input value={item.description} onChange={event => updateLine(index, { description: event.target.value })} maxLength={180} required /></label>
                   <label>Qty<input type="number" inputMode="numeric" min="1" max="9999" step="1" value={item.quantity} onChange={event => updateLine(index, { quantity: event.target.value })} required /></label>
                   <label>Rate (₹)<input type="number" inputMode="decimal" min="0" max="10000000" step="0.01" value={item.unitPrice} onChange={event => updateLine(index, { unitPrice: event.target.value })} required /></label>
@@ -175,9 +275,10 @@ export function Billing({ invoices, loading, refresh, notify }: {
                   <button type="button" className="icon-button danger" aria-label={`Remove line ${index + 1}`} disabled={lineItems.length === 1}
                     onClick={() => setLineItems(lines => lines.filter((_, i) => i !== index))}><Icon name="close" size={15} /></button>
                 </div>
+                </Fragment>
               ))}
             </div>
-            <button type="button" className="text-button" disabled={lineItems.length >= 30} onClick={() => setLineItems(lines => [...lines, emptyLine()])}>
+            <button type="button" className="text-button" disabled={lineItems.length >= maxLines} onClick={() => setLineItems(lines => [...lines, emptyLine('', lines.at(-1)?.section)])}>
               <Icon name="plus" size={14} />Add another line
             </button>
           </fieldset>
@@ -194,7 +295,7 @@ export function Billing({ invoices, loading, refresh, notify }: {
                 </div>
               </div>
               <div className="field-group">
-                <span className="field-label">Original bill <span className="optional">optional PDF, kept private</span></span>
+                <span className="field-label">Original notes / bill <span className="optional">optional PDF, kept private</span></span>
                 <label className={sourceBill ? 'file-chip has-file' : 'file-chip'}>
                   <Icon name="file" size={15} /><span>{sourceBill ? sourceBill.name : 'Attach PDF'}</span>
                   <input type="file" accept="application/pdf,.pdf" onChange={event => setSourceBill(event.target.files?.[0] || null)} />
@@ -209,8 +310,13 @@ export function Billing({ invoices, loading, refresh, notify }: {
           <h3>{guestName || 'Guest name'}</h3>
           <p className="summary-stay">
             <Icon name="calendar" size={14} />
-            {nights === null ? 'Select stay dates' : `${nights} night${nights === 1 ? '' : 's'}`}
+            {[stayLabel, nights === null ? 'Select stay dates' : `${nights} night${nights === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
           </p>
+          {imported?.declaredTotal != null && (
+            <p className={mismatch ? 'summary-check warn' : 'summary-check'}>
+              <Icon name={mismatch ? 'alert' : 'check'} size={13} />{mismatch ? 'Differs from the notes total' : 'Matches the notes total'}
+            </p>
+          )}
           <dl>
             <div><dt>Items</dt><dd>{lineItems.filter(line => line.description.trim()).length}</dd></div>
             <div><dt>Subtotal</dt><dd>{inr(totals.subtotal)}</dd></div>

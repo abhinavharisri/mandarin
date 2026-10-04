@@ -9,10 +9,11 @@
     "build": "node scripts/build-site.mjs && vite build --config admin/vite.config.ts",
     "typecheck": "tsc -p tsconfig.functions.json && tsc -p admin/tsconfig.json",
     "favicon": "node scripts/generate-favicon.mjs",
-    "test": "node --import tsx --test server/src/*.test.ts"
+    "test": "node --import tsx --test server/src/*.test.ts admin/src/notes/*.test.ts"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299",
     "zod": "^4.6.5"
   },
   "devDependencies": {

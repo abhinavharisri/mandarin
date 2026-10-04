@@ -436,6 +436,38 @@ td.actions { width: 1%; text-align: right; }
 .summary-card .glass-button { color: var(--feature-ink); border-color: var(--feature-line); background: color-mix(in srgb, var(--surface) 55%, transparent); }
 .summary-card .glass-button:hover:not(:disabled) { background: var(--surface); }
 
+/* ===== Staff notes import ===== */
+.notes-import {
+  position: relative; display: flex; align-items: center; gap: 16px; margin-bottom: 18px; padding: 18px 20px;
+  border: 1.5px dashed color-mix(in srgb, var(--gold) 55%, var(--line)); border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--gold-soft), var(--surface-2)); transition: border-color .25s, transform .25s var(--ease-out), box-shadow .25s;
+}
+.notes-import:hover, .notes-import.dragging { border-color: var(--gold); box-shadow: 0 0 0 4px var(--gold-glow); }
+.notes-import.dragging { transform: scale(1.01); }
+.notes-import.busy { cursor: progress; }
+.notes-import > div { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.notes-import b { font-size: 13px; font-weight: 600; }
+.notes-import span:not(.notes-import-icon):not(.chip-button) { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.notes-import-icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #cfa24a, #b0832c); box-shadow: 0 6px 16px rgba(176, 131, 44, .3); }
+.notes-import-button { flex: none; pointer-events: none; background: var(--surface); }
+.notes-import > input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.notes-import.busy > input { cursor: progress; }
+.import-result { display: flex; align-items: flex-start; gap: 11px; margin: -6px 0 22px; padding: 13px 10px 13px 14px; border-radius: 12px; color: var(--success); background: var(--success-soft); animation: rise .4s var(--ease-out); }
+.import-result.warn { color: #9a6410; background: color-mix(in srgb, #f3c56b 22%, var(--surface)); }
+.import-result > .icon { margin-top: 2px; }
+.import-result > div { display: grid; flex: 1; gap: 3px; }
+.import-result b { color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.import-result span { color: var(--ink-2); font-size: 11.5px; line-height: 1.5; }
+.import-result .icon-button { width: 28px; height: 28px; }
+.line-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding: 4px 4px 4px 0; border-bottom: 1px solid var(--line); }
+.line-section:first-child { margin-top: 0; }
+.line-section-name { flex: 1; }
+.line-section-name input { height: 32px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--gold-ink); font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; }
+.line-section-name input:hover { border-color: var(--line); }
+.line-section-total { color: var(--gold-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.summary-check { display: inline-flex; align-items: center; gap: 6px; justify-self: start; margin: 0; padding: 4px 10px; border-radius: 999px; color: var(--success); background: var(--success-soft); font-size: 10.5px; font-weight: 600; }
+.summary-check.warn { color: #9a6410; background: color-mix(in srgb, #f3c56b 25%, var(--surface)); }
+
 /* ===== Modal & toasts ===== */
 .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(13, 11, 8, .55); backdrop-filter: blur(6px); animation: fade-in .25s var(--ease); }
 .modal { width: min(100%, 420px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-lg); animation: modal-in .4s var(--ease-out); }
@@ -552,6 +584,8 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .bottom-nav .selected { color: var(--gold-ink); background: var(--gold-soft); }
   .toast-stack { right: 16px; bottom: calc(82px + env(safe-area-inset-bottom)); }
   .upload-layout { grid-template-columns: 1fr; }
+  .notes-import { flex-wrap: wrap; }
+  .notes-import-button { display: none; }
   .upload-fields .primary-button { justify-self: stretch; }
   .line-item { grid-template-columns: minmax(0, 1fr) 64px 104px 32px; }
   .line-item .line-amount { display: none; }
