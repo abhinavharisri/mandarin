@@ -1,5 +1,5 @@
 import { FormEvent, ReactNode, useMemo, useState } from 'react';
-import { inr } from './format';
+import { inr, quantityLabel, toggleHalf } from './format';
 import { Menu, MenuItem, MenuOption, PickedLine } from './types';
 import { Icon, Spinner } from './ui';
 
@@ -71,10 +71,12 @@ export function MenuPicker({ menu, header, confirmLabel, onConfirm, onCancel }: 
     setCustom(null);
   };
 
-  const step = (key: string, delta: number) =>
-    setCart(current => current.map(line => line.key === key ? { ...line, quantity: line.quantity + delta } : line).filter(line => line.quantity > 0));
+  const setQuantity = (key: string, next: (quantity: number) => number) =>
+    setCart(current => current.map(line => line.key === key ? { ...line, quantity: next(line.quantity) } : line).filter(line => line.quantity > 0));
+  const step = (key: string, delta: number) => setQuantity(key, quantity => Math.max(0, quantity + delta));
 
   const count = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const countLabel = quantityLabel(count);
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
 
   const confirm = async () => {
@@ -161,9 +163,11 @@ export function MenuPicker({ menu, header, confirmLabel, onConfirm, onCancel }: 
                 <span className="cart-name">{line.name}{line.option && <small> · {line.option}</small>}</span>
                 <span className="stepper">
                   <button type="button" onClick={() => step(line.key, -1)} aria-label={`One less ${line.name}`}><Icon name="minus" size={13} /></button>
-                  <b>{line.quantity}</b>
+                  <b>{quantityLabel(line.quantity)}</b>
                   <button type="button" onClick={() => step(line.key, 1)} aria-label={`One more ${line.name}`}><Icon name="plus" size={13} /></button>
                 </span>
+                <button type="button" className={Number.isInteger(line.quantity) ? 'half-button' : 'half-button active'} onClick={() => setQuantity(line.key, toggleHalf)}
+                  aria-label={Number.isInteger(line.quantity) ? `Make ${line.name} a half portion more` : `Remove the half portion of ${line.name}`} title="Half portion">½</button>
                 <span className="cart-amount">{inr(line.quantity * line.unitPrice)}</span>
               </li>
             ))}
@@ -172,7 +176,7 @@ export function MenuPicker({ menu, header, confirmLabel, onConfirm, onCancel }: 
         <div className="picker-actions">
           <button type="button" className="ghost-button" onClick={onCancel} disabled={busy}>Cancel</button>
           <button type="button" className="primary-button" disabled={!count || busy} onClick={confirm}>
-            {busy ? <><Spinner /> Saving…</> : count ? `${confirmLabel} · ${count} item${count === 1 ? '' : 's'} · ${inr(total)}` : 'Tap items to add them'}
+            {busy ? <><Spinner /> Saving…</> : count ? `${confirmLabel} · ${countLabel} item${count === 1 ? '' : 's'} · ${inr(total)}` : 'Tap items to add them'}
           </button>
         </div>
       </div>

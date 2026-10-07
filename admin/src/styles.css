@@ -417,7 +417,7 @@ td.actions { width: 1%; text-align: right; }
 .billing-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
 .quick-add { display: flex; flex-wrap: wrap; gap: 7px; }
 .line-items { display: grid; gap: 10px; }
-.line-item { display: grid; grid-template-columns: minmax(0, 1fr) 76px 130px 110px 36px; align-items: end; gap: 10px; animation: rise .4s var(--ease-out) both; }
+.line-item { display: grid; grid-template-columns: minmax(0, 1fr) 118px 130px 110px 36px; align-items: end; gap: 10px; animation: rise .4s var(--ease-out) both; }
 .line-amount { height: 44px; display: flex; align-items: center; justify-content: flex-end; color: var(--ink-2); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .line-item .icon-button { height: 44px; }
 .tax-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -646,6 +646,32 @@ td.actions { width: 1%; text-align: right; }
 td.rank { width: 28px; color: var(--muted); font-variant-numeric: tabular-nums; }
 tfoot td { padding: 12px 8px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 600; }
 
+/* ===== Half portions, advances, editing ===== */
+.qty-cell { display: flex; align-items: flex-end; gap: 4px; min-width: 0; }
+.qty-cell label { flex: 1; min-width: 0; }
+.half-button {
+  flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px dashed color-mix(in srgb, var(--gold) 55%, var(--line));
+  border-radius: 50%; background: var(--surface); color: var(--gold-ink); font-size: 14px; font-weight: 600; line-height: 1;
+  transition: background-color .2s, color .2s, transform .15s var(--ease-out);
+}
+.qty-cell .half-button { width: 38px; height: 44px; border-radius: var(--radius-sm); }
+.half-button:hover:not(:disabled) { background: var(--gold-soft); }
+.half-button:active:not(:disabled) { transform: scale(.92); }
+.half-button.active { border-style: solid; border-color: transparent; color: #fff; background: linear-gradient(135deg, #cfa24a, #b0832c); }
+.summary-dates { margin: -4px 0 0; color: var(--feature-muted); font-size: 11.5px; }
+.summary-card .grand.balance { margin-top: 2px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--charcoal-panel, #1a1814); }
+:root[data-theme='dark'] .summary-card .grand.balance { background: rgba(0, 0, 0, .4); }
+.summary-card .grand.balance dt { color: #fff; }
+.summary-card .grand.balance dd { color: var(--gold-light); font-size: 26px; }
+.confirm-icon.warn { color: #9a6410; background: color-mix(in srgb, #f3c56b 28%, var(--surface)); }
+.confirm p b { color: var(--ink); }
+.revised-tag { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; color: var(--gold-ink); background: var(--gold-soft); font-size: 9.5px; font-weight: 600; letter-spacing: .4px; vertical-align: middle; }
+.balance-note { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; font-weight: 500; }
+tbody tr.editing { background: var(--gold-soft); }
+.tab-total small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+.order-group li .half-button { width: 30px; height: 30px; font-size: 13px; }
+.picker-cart li .half-button { width: 30px; height: 30px; font-size: 13px; }
+
 /* ===== Modal & toasts ===== */
 .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(13, 11, 8, .55); backdrop-filter: blur(6px); animation: fade-in .25s var(--ease); }
 .modal { width: min(100%, 420px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-lg); animation: modal-in .4s var(--ease-out); }
@@ -769,7 +795,7 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .notes-import { flex-wrap: wrap; }
   .notes-import-button { display: none; }
   .upload-fields .primary-button { justify-self: stretch; }
-  .line-item { grid-template-columns: minmax(0, 1fr) 64px 104px 32px; }
+  .line-item { grid-template-columns: minmax(0, 1fr) 104px 104px 32px; }
   .line-item .line-amount { display: none; }
   .bar-chart-plot { height: 200px; margin-left: 44px; }
   .modal-backdrop:has(.picker) { padding: 0; }
@@ -797,7 +823,8 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .segmented { display: flex; width: 100%; }
   .segmented button { flex: 1 1 auto; justify-content: center; padding: 0 9px; }
   .toolbar .select-field { flex: 1; }
-  .line-item { grid-template-columns: minmax(0, 1fr) 54px 92px 30px; gap: 6px; }
+  .line-item { grid-template-columns: minmax(0, 1fr) 92px 84px 30px; gap: 6px; }
+  .qty-cell .half-button { width: 30px; }
   .line-item label { font-size: 10px; }
   .line-item input { padding: 0 8px; font-size: 12.5px; }
   .bar-chart-labels span { font-size: 9px; }

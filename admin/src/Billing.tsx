@@ -1,9 +1,9 @@
 import { DragEvent, FormEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, downloadFile } from './client';
-import { downloadCsv, inr, optionLabel, shortDate } from './format';
+import { dayLabel, downloadCsv, inr, optionLabel, quantityLabel, shortDate, toggleHalf } from './format';
 import { InvoiceTable } from './InvoiceTable';
 import { MenuPicker } from './MenuPicker';
-import { InvoiceDraft, InvoiceSummary, Menu, Notify, PickedLine } from './types';
+import { InvoiceDetail, InvoiceDraft, InvoiceSummary, Menu, Notify, PickedLine } from './types';
 import type { NotesImport } from './notes/parseNotes';
 import { Icon, Modal, Segmented, Spinner, stagger } from './ui';
 
@@ -23,6 +23,30 @@ function totalsFor(lines: LineItem[], taxRate: number) {
   return { subtotal: Math.round(subtotal * 100) / 100, taxAmount, total: Math.round((subtotal + taxAmount) * 100) / 100 };
 }
 
+// The bill in progress is kept in this browser tab so going back or switching pages never erases it.
+const storageKey = 'mo-billing-draft';
+type SavedBill = {
+  guestName: string; guestEmail: string; stayStart: string; stayEnd: string; stayLabel: string; taxRate: string;
+  advancePaid: string; lineItems: LineItem[]; tabId: string | null; editing: { id: string; number: string } | null;
+};
+
+function readSavedBill(): SavedBill | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) as SavedBill : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forgets the bill in progress (after generating, clearing, or signing out). */
+export function clearSavedBill() {
+  try { sessionStorage.removeItem(storageKey); } catch { /* storage unavailable */ }
+}
+
+/** Stays this long are usually a day/month mix-up, so ask before generating. */
+const suspiciousNights = 30;
+
 function nightsBetween(start: string, end: string) {
   if (!start || !end) return null;
   const nights = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000);
@@ -33,19 +57,23 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
   invoices: InvoiceSummary[]; loading: boolean; refresh: () => Promise<void>; notify: Notify;
   menu: Menu | null; draft: InvoiceDraft | null; onDraftUsed: () => void;
 }) {
-  const [guestName, setGuestName] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [stayStart, setStayStart] = useState('');
-  const [stayEnd, setStayEnd] = useState('');
-  const [stayLabel, setStayLabel] = useState('');
+  const [saved] = useState(readSavedBill);
+  const [guestName, setGuestName] = useState(saved?.guestName ?? '');
+  const [guestEmail, setGuestEmail] = useState(saved?.guestEmail ?? '');
+  const [stayStart, setStayStart] = useState(saved?.stayStart ?? '');
+  const [stayEnd, setStayEnd] = useState(saved?.stayEnd ?? '');
+  const [stayLabel, setStayLabel] = useState(saved?.stayLabel ?? '');
+  const [advancePaid, setAdvancePaid] = useState(saved?.advancePaid ?? '');
+  const [editing, setEditing] = useState<SavedBill['editing']>(saved?.editing ?? null);
+  const [confirmingStay, setConfirmingStay] = useState(false);
   const [importing, setImporting] = useState(false);
   const [imported, setImported] = useState<ImportSummary | null>(null);
   const [draggingNotes, setDraggingNotes] = useState(false);
-  const [tabId, setTabId] = useState<string | null>(null);
+  const [tabId, setTabId] = useState<string | null>(saved?.tabId ?? null);
   const [picking, setPicking] = useState(false);
   const [pickSection, setPickSection] = useState('');
-  const [taxRate, setTaxRate] = useState('0');
-  const [lineItems, setLineItems] = useState<LineItem[]>([emptyLine()]);
+  const [taxRate, setTaxRate] = useState(saved?.taxRate ?? '0');
+  const [lineItems, setLineItems] = useState<LineItem[]>(saved?.lineItems?.length ? saved.lineItems : [emptyLine()]);
   const [sourceBill, setSourceBill] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -56,6 +84,33 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
   const totals = totalsFor(lineItems, Number(taxRate));
   const nights = nightsBetween(stayStart, stayEnd);
   const mismatch = imported?.declaredTotal != null && Math.abs(imported.declaredTotal - totals.subtotal) > 0.009;
+  const advance = Math.max(0, Number(advancePaid) || 0);
+  const balance = Math.round((totals.total - advance) * 100) / 100;
+  const advanceTooHigh = advance > totals.total;
+  const longStay = nights !== null && nights > suspiciousNights;
+  const hasContent = Boolean(guestName.trim() || lineItems.some(line => line.description.trim() || line.unitPrice) || editing || tabId);
+
+  useEffect(() => {
+    try {
+      if (!hasContent) sessionStorage.removeItem(storageKey);
+      else sessionStorage.setItem(storageKey, JSON.stringify({ guestName, guestEmail, stayStart, stayEnd, stayLabel, taxRate, advancePaid, lineItems, tabId, editing } satisfies SavedBill));
+    } catch { /* storage unavailable or full: the form still works */ }
+  }, [hasContent, guestName, guestEmail, stayStart, stayEnd, stayLabel, taxRate, advancePaid, lineItems, tabId, editing]);
+
+  // Ask before closing or reloading the page with a bill in progress.
+  useEffect(() => {
+    if (!hasContent) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasContent]);
+
+  const announcedRestore = useRef(false);
+  useEffect(() => {
+    if (announcedRestore.current || !saved || draft) return;
+    announcedRestore.current = true;
+    if (saved.guestName || saved.lineItems?.some(line => line.description)) notify('Your unfinished bill was restored.');
+  }, [saved, draft, notify]);
 
   // A tab checked out on the Tabs page arrives here pre-filled for review (applied once).
   const appliedDraft = useRef<InvoiceDraft | null>(null);
@@ -67,6 +122,8 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     setStayStart(draft.stayStart);
     setStayEnd(draft.stayEnd);
     setStayLabel(draft.stayLabel);
+    setAdvancePaid(draft.advancePaid ? String(draft.advancePaid) : '');
+    setEditing(null);
     setLineItems(draft.lines.slice(0, maxLines).map(line => ({
       description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section, itemId: line.itemId,
     })));
@@ -164,10 +221,41 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     setStayEnd('');
     setStayLabel('');
     setTaxRate('0');
+    setAdvancePaid('');
     setLineItems([emptyLine()]);
     setSourceBill(null);
     setImported(null);
     setTabId(null);
+    setEditing(null);
+    clearSavedBill();
+  };
+
+  /** Loads an issued invoice into the form; saving regenerates its PDF under the same number. */
+  const startEdit = async (invoice: InvoiceSummary) => {
+    if (hasContent && editing?.id !== invoice.id && !window.confirm('Replace the bill you are working on with this invoice?')) return;
+    try {
+      const full = await api<InvoiceDetail>(`/api/admin/invoices/${invoice.id}`);
+      setGuestName(full.guest_name);
+      setGuestEmail(full.guest_email || '');
+      setStayStart(full.stay_start || '');
+      setStayEnd(full.stay_end || '');
+      setStayLabel(full.stay_label || '');
+      setTaxRate(String(full.tax_rate ?? 0));
+      setAdvancePaid(full.advance_paid ? String(full.advance_paid) : '');
+      setLineItems(full.line_items?.length
+        ? full.line_items.map(line => ({ description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section || '', itemId: line.itemId }))
+        : [emptyLine()]);
+      setEditing({ id: full.id, number: full.invoice_number });
+      setTabId(null);
+      setImported(null);
+      setSourceBill(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      notify(full.line_items?.length
+        ? `Editing ${full.invoice_number}. Save to replace its PDF.`
+        : `${full.invoice_number} was created before items were saved. Re-enter the items and stay dates, then save.`, !full.line_items?.length);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not open this invoice.', true);
+    }
   };
 
   const downloadInvoice = async (invoice: InvoiceSummary) => {
@@ -181,12 +269,25 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     }
   };
 
-  const generate = async (event: FormEvent) => {
+  const generate = (event: FormEvent) => {
     event.preventDefault();
     if (nights === null) {
       notify('Check-out must be on or after check-in.', true);
       return;
     }
+    if (advanceTooHigh) {
+      notify('The advance paid is more than the bill total.', true);
+      return;
+    }
+    if (longStay) {
+      setConfirmingStay(true);
+      return;
+    }
+    submit();
+  };
+
+  const submit = async () => {
+    setConfirmingStay(false);
     const form = new FormData();
     form.set('guestName', guestName);
     form.set('guestEmail', guestEmail);
@@ -195,6 +296,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     form.set('stayLabel', stayLabel);
     if (tabId) form.set('tabId', tabId);
     form.set('taxRate', taxRate);
+    form.set('advancePaid', String(advance));
     form.set('lineItems', JSON.stringify(lineItems.map(item => ({
       description: item.description, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice),
       ...(item.section.trim() ? { section: item.section.trim() } : {}),
@@ -203,9 +305,11 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     if (sourceBill) form.set('sourceBill', sourceBill);
     setBusy(true);
     try {
-      const headers = await downloadFile('/api/admin/invoices', 'invoice.pdf', { method: 'POST', body: form });
+      const headers = editing
+        ? await downloadFile(`/api/admin/invoices/${editing.id}`, `${editing.number}.pdf`, { method: 'PUT', body: form })
+        : await downloadFile('/api/admin/invoices', 'invoice.pdf', { method: 'POST', body: form });
       await refresh();
-      notify(`Invoice ${headers.get('X-Invoice-Number') || ''} created and downloaded.`);
+      notify(`Invoice ${headers.get('X-Invoice-Number') || ''} ${editing ? 'updated' : 'created'} and downloaded.`);
       resetForm();
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not generate invoice.', true);
@@ -215,8 +319,11 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
   };
 
   const exportCsv = () => downloadCsv(`mandarin-orchid-invoices-${new Date().toISOString().slice(0, 10)}.csv`, [
-    ['Invoice', 'Guest', 'Email', 'Date', 'Currency', 'Total'],
-    ...records.map(invoice => [invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', invoice.created_at.slice(0, 10), invoice.currency, Number(invoice.total_amount).toFixed(2)]),
+    ['Invoice', 'Guest', 'Email', 'Date', 'Villa / room', 'Currency', 'Total', 'Advance paid', 'Balance due'],
+    ...records.map(invoice => [
+      invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', invoice.created_at.slice(0, 10), invoice.stay_label || '', invoice.currency,
+      Number(invoice.total_amount).toFixed(2), (invoice.advance_paid || 0).toFixed(2), (invoice.balance_due ?? Number(invoice.total_amount)).toFixed(2),
+    ]),
   ]);
 
   return (
@@ -224,9 +331,20 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
       <form className="billing-layout" onSubmit={generate}>
         <section className="panel stagger" style={stagger(0)}>
           <div className="panel-heading">
-            <div><p className="eyebrow">NEW DOCUMENT</p><h2>Create a branded invoice</h2></div>
+            <div><p className="eyebrow">{editing ? 'EDITING' : 'NEW DOCUMENT'}</p><h2>{editing ? `Edit ${editing.number}` : 'Create a branded invoice'}</h2></div>
             <span className="muted small">PDF · INR</span>
           </div>
+
+          {editing && (
+            <div className="import-result warn" role="status">
+              <Icon name="edit" size={16} />
+              <div>
+                <b>Editing invoice {editing.number}</b>
+                <span>Saving keeps the same invoice number and replaces its PDF, marked “Revised”.</span>
+              </div>
+              <button type="button" className="ghost-button" onClick={resetForm}>Cancel editing</button>
+            </div>
+          )}
 
           {tabId && (
             <div className="import-result" role="status">
@@ -311,7 +429,12 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
                 )}
                 <div className="line-item">
                   <label>Description<input value={item.description} onChange={event => updateLine(index, { description: event.target.value })} maxLength={180} required /></label>
-                  <label>Qty<input type="number" inputMode="numeric" min="1" max="9999" step="1" value={item.quantity} onChange={event => updateLine(index, { quantity: event.target.value })} required /></label>
+                  <div className="qty-cell">
+                    <label>Qty<input type="number" inputMode="decimal" min="0.5" max="9999" step="0.5" value={item.quantity} onChange={event => updateLine(index, { quantity: event.target.value })} required /></label>
+                    <button type="button" className={Number.isInteger(Number(item.quantity)) ? 'half-button' : 'half-button active'}
+                      onClick={() => updateLine(index, { quantity: String(toggleHalf(Number(item.quantity) || 1)) })}
+                      aria-label={Number.isInteger(Number(item.quantity)) ? 'Add a half portion' : 'Remove the half portion'} title="Half portion">½</button>
+                  </div>
                   <label>Rate (₹)<input type="number" inputMode="decimal" min="0" max="10000000" step="0.01" value={item.unitPrice} onChange={event => updateLine(index, { unitPrice: event.target.value })} required /></label>
                   <span className="line-amount" aria-label="Line amount">{inr((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))}</span>
                   <button type="button" className="icon-button danger" aria-label={`Remove line ${index + 1}`} disabled={lineItems.length === 1}
@@ -336,6 +459,11 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
                   <input aria-labelledby="tax-label" type="number" min="0" max="100" step="0.01" value={taxRate} onChange={event => setTaxRate(event.target.value)} />
                 </div>
               </div>
+              <label><span>Advance paid (₹) <span className="optional">optional</span></span>
+                <input type="number" inputMode="decimal" min="0" step="0.01" value={advancePaid} placeholder="0" aria-invalid={advanceTooHigh}
+                  onChange={event => setAdvancePaid(event.target.value)} />
+                {advanceTooHigh && <span className="field-hint warn">More than the bill total</span>}
+              </label>
               <div className="field-group">
                 <span className="field-label">Original notes / bill <span className="optional">optional PDF, kept private</span></span>
                 <label className={sourceBill ? 'file-chip has-file' : 'file-chip'}>
@@ -354,6 +482,11 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
             <Icon name="calendar" size={14} />
             {[stayLabel, nights === null ? 'Select stay dates' : `${nights} night${nights === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
           </p>
+          {stayStart && stayEnd && nights !== null && (
+            <p className={longStay ? 'summary-check warn' : 'summary-dates'}>
+              {longStay && <Icon name="alert" size={13} />}{dayLabel(stayStart, false)} → {dayLabel(stayEnd)}{longStay && ' · check the dates'}
+            </p>
+          )}
           {imported?.declaredTotal != null && (
             <p className={mismatch ? 'summary-check warn' : 'summary-check'}>
               <Icon name={mismatch ? 'alert' : 'check'} size={13} />{mismatch ? 'Differs from the notes total' : 'Matches the notes total'}
@@ -364,9 +497,15 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
             <div><dt>Subtotal</dt><dd>{inr(totals.subtotal)}</dd></div>
             <div><dt>Tax ({Number(taxRate) || 0}%)</dt><dd>{inr(totals.taxAmount)}</dd></div>
             <div className="grand"><dt>Total</dt><dd key={totals.total} className="pulse">{inr(totals.total)}</dd></div>
+            {advance > 0 && (
+              <>
+                <div><dt>Advance paid</dt><dd>− {inr(advance)}</dd></div>
+                <div className="grand balance"><dt>Balance payable</dt><dd key={balance} className="pulse">{inr(Math.max(0, balance))}</dd></div>
+              </>
+            )}
           </dl>
           <button className="primary-button wide" disabled={busy}>
-            {busy ? <><Spinner /> Preparing PDF…</> : <><Icon name="download" size={15} />Generate & download</>}
+            {busy ? <><Spinner /> Preparing PDF…</> : <><Icon name="download" size={15} />{editing ? 'Save changes & download' : 'Generate & download'}</>}
           </button>
           <button type="button" className="glass-button wide" onClick={resetForm} disabled={busy}>Clear form</button>
           <p className="summary-note"><Icon name="lock" size={12} /> Stored privately. Not emailed to the guest.</p>
@@ -389,9 +528,23 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
           ]} />
         </div>
         <p className="records-summary">{records.length} invoice{records.length === 1 ? '' : 's'} · <b>{inr(recordsTotal)}</b></p>
-        <InvoiceTable invoices={records} onDownload={downloadInvoice} onDelete={setPendingDelete} downloading={downloading} loading={loading}
+        <InvoiceTable invoices={records} onDownload={downloadInvoice} onDelete={setPendingDelete} onEdit={startEdit} editingId={editing?.id} downloading={downloading} loading={loading}
           emptyText={invoices.length ? 'No invoices match this search.' : undefined} />
       </section>
+
+      {confirmingStay && stayStart && stayEnd && (
+        <Modal title="Check the stay dates" onClose={() => setConfirmingStay(false)}>
+          <div className="confirm">
+            <span className="confirm-icon warn"><Icon name="calendar" size={22} /></span>
+            <h2>{nights} nights?</h2>
+            <p className="muted">This bill is for <b>{dayLabel(stayStart)}</b> to <b>{dayLabel(stayEnd)}</b>. Long stays like this are usually a day and month mix-up.</p>
+            <div className="modal-actions">
+              <button type="button" className="primary-button" onClick={() => setConfirmingStay(false)} data-autofocus>Fix the dates</button>
+              <button type="button" className="ghost-button" onClick={submit}>The dates are right</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {picking && menu && (
         <Modal title="Add from menu" onClose={() => setPicking(false)} wide>

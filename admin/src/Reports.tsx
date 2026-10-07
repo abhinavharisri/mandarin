@@ -76,8 +76,8 @@ export function Reports({ notify }: { notify: Notify }) {
   };
 
   const exportInvoices = () => report && downloadCsv(`${fileStem}-invoices.csv`, [
-    ['Date', 'Invoice', 'Guest', 'Villa / room', 'Subtotal', 'Tax', 'Total'],
-    ...report.register.map(row => [row.date, row.invoice_number, row.guest_name, row.stay_label, row.subtotal?.toFixed(2) ?? '', row.tax?.toFixed(2) ?? '', row.total.toFixed(2)]),
+    ['Date', 'Invoice', 'Guest', 'Villa / room', 'Subtotal', 'Tax', 'Total', 'Advance paid', 'Balance due'],
+    ...report.register.map(row => [row.date, row.invoice_number, row.guest_name, row.stay_label, row.subtotal?.toFixed(2) ?? '', row.tax?.toFixed(2) ?? '', row.total.toFixed(2), row.advance.toFixed(2), row.balance.toFixed(2)]),
   ]);
 
   const exportLines = () => report && downloadCsv(`${fileStem}-line-items.csv`, [

@@ -50,3 +50,23 @@ test('handles other common note styles and reports unreadable lines', () => {
   assert.deepEqual(result.skipped, ['see manager']);
   assert.equal(result.declaredTotal, 1710);
 });
+
+test('reads month-first dates when that is what the note means', () => {
+  const result = parseNotes(['Villa 3 plus 1 room', 'Check in 10/2', 'Check out 10/5', '10/2', 'Breakfast', 'Dosai 4 - 240'], new Date('2026-10-06T12:00:00Z'));
+  assert.equal(result.stayStart, '2026-10-02');
+  assert.equal(result.stayEnd, '2026-10-05');
+  assert.equal(result.lines[0].section, '2 Oct · Breakfast');
+  // A date that can only be day-first settles the order for the whole note.
+  const dayFirst = parseNotes(['Check in 10/2', 'Check out 25/2', 'Tea 1 - 30'], new Date('2026-10-06T12:00:00Z'));
+  assert.equal(dayFirst.stayStart, '2026-02-10');
+});
+
+test('keeps half portions as quantities', () => {
+  const lines = parseNotes(['Chicken biriyani ½ - 190', 'Parotta 1½ - 67.50', 'Mutton curry 2.5 - 900', 'Chicken 65 1½kg - 2850'], new Date('2026-10-06T12:00:00Z')).lines;
+  assert.deepEqual(lines.map(line => [line.description, line.quantity, line.unitPrice]), [
+    ['Chicken Biryani', 0.5, 380],
+    ['Parotta', 1.5, 45],
+    ['Mutton Curry', 2.5, 360],
+    ['Chicken 65 (1½ kg)', 1, 2850],
+  ]);
+});

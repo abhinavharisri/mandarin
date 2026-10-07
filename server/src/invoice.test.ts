@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PDFDocument } from 'pdf-lib';
-import { buildInvoicePdf, calculateTotals, pdfSafe } from './invoice.js';
+import { buildInvoicePdf, calculateTotals, date, pdfSafe, quantityText } from './invoice.js';
 
 const pageCount = async (bytes: Uint8Array) => (await PDFDocument.load(bytes)).getPageCount();
 
@@ -49,4 +49,11 @@ test('handles non-Latin names and long bills without failing', async () => {
 test('maps characters the PDF fonts cannot draw', () => {
   assert.equal(pdfSafe('“José” – ₹500'), '"José" - Rs.500');
   assert.equal(pdfSafe('அ'), '?');
+});
+
+test('writes half portions and dates unambiguously', () => {
+  assert.deepEqual([0.5, 1, 1.5, 12.5].map(quantityText), ['½', '1', '1½', '12½']);
+  assert.equal(pdfSafe(quantityText(1.5)), '1½'); // ½ is printable in the PDF font
+  assert.equal(date(new Date('2026-10-01T20:00:00Z')), '2 Oct 2026'); // India date, not UTC
+  assert.equal(date(new Date('2026-09-15T06:00:00Z')), '15 Sep 2026');
 });

@@ -32,7 +32,7 @@ const maxBillBytes = 10 * 1024 * 1024;
 const categories = ['rooms', 'common', 'exteriors', 'landscapes'] as const;
 const lineSchema = z.array(z.object({
   description: z.string().trim().min(1).max(180),
-  quantity: z.number().int().min(1).max(9999),
+  quantity: z.number().min(0.5).max(9999).refine(value => Number.isInteger(value * 2), 'Use whole or half quantities.'),
   unitPrice: z.number().min(0).max(10_000_000),
   section: z.string().trim().max(60).optional(),
   itemId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional(),
@@ -301,101 +301,132 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     return noContent();
   }
 
-  if (path === '/api/admin/invoices' && method === 'POST') {
-    const form = await formBody(request);
-    const input = z.object({
-      guestName: z.string().trim().min(1).max(140),
-      guestEmail: z.union([z.string().email().max(254), z.literal('')]).optional(),
-      stayStart: z.string().date(),
-      stayEnd: z.string().date(),
-      stayLabel: z.string().trim().max(60).optional(),
-      tabId: z.string().uuid().optional(),
-      taxRate: z.coerce.number().min(0).max(100).default(0),
-      lineItems: z.string().transform((value, context) => {
-        try { return JSON.parse(value) as unknown; }
-        catch {
-          context.addIssue({ code: 'custom', message: 'Bill items must be valid JSON.' });
-          return [];
-        }
-      }).pipe(lineSchema),
-    }).safeParse({
-      guestName: form.get('guestName'),
-      guestEmail: form.get('guestEmail') ?? '',
-      stayStart: form.get('stayStart'),
-      stayEnd: form.get('stayEnd'),
-      stayLabel: form.get('stayLabel') ?? undefined,
-      tabId: form.get('tabId') || undefined,
-      taxRate: form.get('taxRate') ?? 0,
-      lineItems: form.get('lineItems'),
-    });
-    if (!input.success) throw new HttpError(400, 'Check the guest, stay dates, tax rate, and bill items.');
-    if (input.data.stayEnd < input.data.stayStart) throw new HttpError(400, 'Check-out must be on or after check-in.');
+  if (path === '/api/admin/invoices' && method === 'POST') return saveInvoice(request, env, bucket, null);
 
-    const sourceBill = await fileBytes(form.get('sourceBill'), maxBillBytes, 'attached bill');
-    if (sourceBill && sniff(sourceBill)?.mime !== 'application/pdf') throw new HttpError(415, 'The attached source bill must be a valid PDF.');
-
-    const lineItems = input.data.lineItems as InvoiceLine[];
-    const totals = calculateTotals(lineItems, input.data.taxRate);
-    if (!Number.isFinite(totals.total) || totals.total > 9_999_999_999.99) throw new HttpError(400, 'The invoice total exceeds the supported maximum.');
-
-    const id = crypto.randomUUID();
-    const invoiceNumber = `MO-${new Date().getFullYear()}-${id.slice(0, 12).toUpperCase()}`;
-    const createdAt = new Date();
-    const pdfKey = `invoices/${id}.pdf`;
-    const sourceBillKey = sourceBill ? `invoices/${id}-source.pdf` : null;
-    const pdf = await buildInvoicePdf({
-      invoiceNumber,
-      issueDate: createdAt,
-      guestName: input.data.guestName,
-      guestEmail: input.data.guestEmail || undefined,
-      stayStart: new Date(`${input.data.stayStart}T00:00:00+05:30`),
-      stayEnd: new Date(`${input.data.stayEnd}T00:00:00+05:30`),
-      stayLabel: input.data.stayLabel || undefined,
-      taxRate: input.data.taxRate,
-      lineItems,
-      logoPng: await logoBytes(env, request),
-    });
-
-    const saved: string[] = [];
-    try {
-      await bucket.put(pdfKey, pdf, { httpMetadata: { contentType: 'application/pdf' } });
-      saved.push(pdfKey);
-      if (sourceBill && sourceBillKey) {
-        await bucket.put(sourceBillKey, sourceBill, { httpMetadata: { contentType: 'application/pdf' } });
-        saved.push(sourceBillKey);
-      }
-      const record: InvoiceRecord = {
-        id,
-        invoice_number: invoiceNumber,
-        guest_name: input.data.guestName,
-        guest_email: input.data.guestEmail || null,
-        total_amount: totals.total,
-        currency: 'INR',
-        created_at: createdAt.toISOString(),
-        pdf_key: pdfKey,
-        source_bill_key: sourceBillKey,
-        stay_label: input.data.stayLabel || null,
-        subtotal: totals.subtotal,
-        tax_amount: totals.taxAmount,
-        tax_rate: input.data.taxRate,
-        line_items: lineItems.map(({ description, quantity, unitPrice, section, itemId }) => ({
-          description, quantity, unitPrice, ...(section ? { section } : {}), ...(itemId ? { itemId } : {}),
-        })),
-        tab_id: input.data.tabId || null,
-      };
-      await putJson(bucket, `invoices/${id}.json`, record);
-    } catch (error) {
-      if (saved.length) await bucket.delete(saved);
-      throw error;
-    }
-    if (input.data.tabId) {
-      // The invoice is already saved; a failure here only leaves the tab open for staff to close.
-      await closeTab(bucket, input.data.tabId, { id, number: invoiceNumber }).catch(error => console.error('Could not close tab', error));
-    }
-    return pdfResponse(pdf, `${invoiceNumber}.pdf`, 201, { 'X-Invoice-Number': invoiceNumber });
+  if (segments[1] === 'invoices' && segments.length === 3 && (method === 'GET' || method === 'PUT')) {
+    const id = z.string().uuid().safeParse(segments[2]);
+    if (!id.success) throw new HttpError(400, 'Invalid invoice.');
+    const invoice = await requireJson<InvoiceRecord>(bucket, `invoices/${id.data}.json`, 'Invoice was not found.');
+    if (method === 'PUT') return saveInvoice(request, env, bucket, invoice);
+    const { pdf_key: _pdf, source_bill_key: sourceBill, ...rest } = invoice;
+    return json({ ...rest, has_source_bill: Boolean(sourceBill) });
   }
 
   throw new HttpError(404, 'Not found.');
+}
+
+const invoiceInput = z.object({
+  guestName: z.string().trim().min(1).max(140),
+  guestEmail: z.union([z.string().email().max(254), z.literal('')]).optional(),
+  stayStart: z.string().date(),
+  stayEnd: z.string().date(),
+  stayLabel: z.string().trim().max(60).optional(),
+  tabId: z.string().uuid().optional(),
+  taxRate: z.coerce.number().min(0).max(100).default(0),
+  advancePaid: z.coerce.number().min(0).max(9_999_999_999).default(0),
+  lineItems: z.string().transform((value, context) => {
+    try { return JSON.parse(value) as unknown; }
+    catch {
+      context.addIssue({ code: 'custom', message: 'Bill items must be valid JSON.' });
+      return [];
+    }
+  }).pipe(lineSchema),
+});
+
+/**
+ * Creates a new invoice, or revises `existing` in place: same id, number and issue
+ * date, a regenerated PDF, and an incremented revision number.
+ */
+async function saveInvoice(request: Request, env: Env, bucket: R2Bucket, existing: InvoiceRecord | null) {
+  const form = await formBody(request);
+  const input = invoiceInput.safeParse({
+    guestName: form.get('guestName'),
+    guestEmail: form.get('guestEmail') ?? '',
+    stayStart: form.get('stayStart'),
+    stayEnd: form.get('stayEnd'),
+    stayLabel: form.get('stayLabel') ?? undefined,
+    tabId: form.get('tabId') || undefined,
+    taxRate: form.get('taxRate') ?? 0,
+    advancePaid: form.get('advancePaid') || 0,
+    lineItems: form.get('lineItems'),
+  });
+  if (!input.success) throw new HttpError(400, 'Check the guest, stay dates, tax rate, advance and bill items.');
+  if (input.data.stayEnd < input.data.stayStart) throw new HttpError(400, 'Check-out must be on or after check-in.');
+
+  const sourceBill = await fileBytes(form.get('sourceBill'), maxBillBytes, 'attached bill');
+  if (sourceBill && sniff(sourceBill)?.mime !== 'application/pdf') throw new HttpError(415, 'The attached source bill must be a valid PDF.');
+
+  const lineItems = input.data.lineItems as InvoiceLine[];
+  const totals = calculateTotals(lineItems, input.data.taxRate);
+  if (!Number.isFinite(totals.total) || totals.total > 9_999_999_999.99) throw new HttpError(400, 'The invoice total exceeds the supported maximum.');
+  const advancePaid = Math.round(input.data.advancePaid * 100) / 100;
+  if (advancePaid > totals.total) throw new HttpError(400, 'The advance paid is more than the invoice total.');
+
+  const id = existing?.id || crypto.randomUUID();
+  const invoiceNumber = existing?.invoice_number || `MO-${new Date().getFullYear()}-${id.slice(0, 12).toUpperCase()}`;
+  const createdAt = existing ? new Date(existing.created_at) : new Date();
+  const now = new Date();
+  const revision = existing ? (existing.revision || 0) + 1 : 0;
+  const pdfKey = existing?.pdf_key || `invoices/${id}.pdf`;
+  const sourceBillKey = sourceBill ? `invoices/${id}-source.pdf` : existing?.source_bill_key || null;
+  const pdf = await buildInvoicePdf({
+    invoiceNumber,
+    issueDate: createdAt,
+    revisedAt: revision ? now : undefined,
+    guestName: input.data.guestName,
+    guestEmail: input.data.guestEmail || undefined,
+    stayStart: new Date(`${input.data.stayStart}T00:00:00+05:30`),
+    stayEnd: new Date(`${input.data.stayEnd}T00:00:00+05:30`),
+    stayLabel: input.data.stayLabel || undefined,
+    taxRate: input.data.taxRate,
+    advancePaid,
+    lineItems,
+    logoPng: await logoBytes(env, request),
+  });
+
+  const saved: string[] = [];
+  try {
+    await bucket.put(pdfKey, pdf, { httpMetadata: { contentType: 'application/pdf' } });
+    if (!existing) saved.push(pdfKey);
+    if (sourceBill && sourceBillKey) {
+      await bucket.put(sourceBillKey, sourceBill, { httpMetadata: { contentType: 'application/pdf' } });
+      if (!existing) saved.push(sourceBillKey);
+    }
+    const record: InvoiceRecord = {
+      id,
+      invoice_number: invoiceNumber,
+      guest_name: input.data.guestName,
+      guest_email: input.data.guestEmail || null,
+      total_amount: totals.total,
+      currency: 'INR',
+      created_at: createdAt.toISOString(),
+      pdf_key: pdfKey,
+      source_bill_key: sourceBillKey,
+      stay_label: input.data.stayLabel || null,
+      stay_start: input.data.stayStart,
+      stay_end: input.data.stayEnd,
+      subtotal: totals.subtotal,
+      tax_amount: totals.taxAmount,
+      tax_rate: input.data.taxRate,
+      advance_paid: advancePaid,
+      balance_due: Math.round((totals.total - advancePaid) * 100) / 100,
+      line_items: lineItems.map(({ description, quantity, unitPrice, section, itemId }) => ({
+        description, quantity, unitPrice, ...(section ? { section } : {}), ...(itemId ? { itemId } : {}),
+      })),
+      tab_id: existing ? existing.tab_id ?? null : input.data.tabId || null,
+      revision,
+      updated_at: now.toISOString(),
+    };
+    await putJson(bucket, `invoices/${id}.json`, record);
+  } catch (error) {
+    if (saved.length) await bucket.delete(saved);
+    throw error;
+  }
+  if (!existing && input.data.tabId) {
+    // The invoice is already saved; a failure here only leaves the tab open for staff to close.
+    await closeTab(bucket, input.data.tabId, { id, number: invoiceNumber }).catch(error => console.error('Could not close tab', error));
+  }
+  return pdfResponse(pdf, `${invoiceNumber}.pdf`, existing ? 200 : 201, { 'X-Invoice-Number': invoiceNumber });
 }
 
 /** Entry point for every /api request. */

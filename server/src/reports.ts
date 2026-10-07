@@ -19,6 +19,13 @@ export type InvoiceRecord = {
   tax_rate?: number;
   line_items?: InvoiceLineRecord[];
   tab_id?: string | null;
+  // Added with editing and advances.
+  stay_start?: string;
+  stay_end?: string;
+  advance_paid?: number;
+  balance_due?: number;
+  revision?: number;
+  updated_at?: string;
 };
 
 export type ReportCategory = 'food' | 'room' | 'extras';
@@ -38,7 +45,7 @@ export type Report = {
   trend: { key: string; label: string; total: number; count: number }[];
   byStay: { label: string; total: number; count: number }[];
   topItems: { name: string; quantity: number; revenue: number }[];
-  register: { id: string; invoice_number: string; date: string; guest_name: string; stay_label: string; subtotal: number | null; tax: number | null; total: number }[];
+  register: { id: string; invoice_number: string; date: string; guest_name: string; stay_label: string; subtotal: number | null; tax: number | null; total: number; advance: number; balance: number }[];
   lines: { invoice_number: string; date: string; stay_label: string; section: string; category: string; description: string; quantity: number; unit_price: number; amount: number }[];
 };
 
@@ -137,6 +144,7 @@ export function buildReport(all: InvoiceRecord[], menu: Menu, from: string, to: 
     register.push({
       id: invoice.id, invoice_number: invoice.invoice_number, date, guest_name: invoice.guest_name, stay_label: invoice.stay_label || '',
       subtotal: invoice.subtotal ?? null, tax: invoice.tax_amount ?? null, total,
+      advance: invoice.advance_paid || 0, balance: invoice.balance_due ?? total,
     });
   }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Billing } from './Billing';
+import { Billing, clearSavedBill } from './Billing';
 import { api, sessionRenewedEvent, unauthorizedEvent } from './client';
 import { duration } from './format';
 import { Gallery } from './Gallery';
@@ -73,6 +73,7 @@ export function App() {
     setInvoices([]);
     setMenu(null);
     setDraft(null);
+    clearSavedBill(); // never leave a guest's bill behind for the next person on this browser
   }, []);
 
   useEffect(() => {

@@ -24,6 +24,8 @@ export type Tab = {
   guest_name: string;
   guest_email: string;
   check_in: string;
+  /** Advance received at check-in, carried onto the final bill. */
+  advance_paid?: number;
   status: 'open' | 'closed';
   created_at: string;
   updated_at: string;
@@ -37,6 +39,8 @@ const maxOrders = 400;
 const openKey = (id: string) => `tabs/open/${id}.json`;
 const closedKey = (id: string) => `tabs/closed/${id}.json`;
 const tabId = z.string().uuid();
+/** Whole or half portions: 1, 1.5, 0.5 … */
+const portions = (min: number) => z.number().min(min).max(999).refine(value => Number.isInteger(value * 2), 'Use whole or half quantities.');
 
 const total = (tab: Tab) => Math.round(tab.orders.reduce((sum, order) => sum + order.quantity * order.unit_price, 0) * 100) / 100;
 
@@ -55,13 +59,14 @@ const tabFields = z.object({
   guestName: z.string().trim().max(140).optional(),
   guestEmail: z.union([z.string().trim().email().max(254), z.literal('')]).optional(),
   checkIn: z.string().date(),
+  advancePaid: z.number().min(0).max(9_999_999_999).optional(),
 });
 
 const orderInput = z.object({
   itemId: z.string().regex(/^[a-z0-9-]{1,80}$/).nullable().optional(),
   name: z.string().trim().min(1).max(100),
   option: z.string().trim().max(20).default(''),
-  quantity: z.number().int().min(1).max(999),
+  quantity: portions(0.5),
   unitPrice: z.number().min(0).max(10_000_000),
   section: z.string().trim().min(1).max(60),
 });
@@ -109,6 +114,7 @@ export async function tabRoutes(request: Request, bucket: R2Bucket, segments: st
       guest_name: input.data.guestName || '',
       guest_email: input.data.guestEmail || '',
       check_in: input.data.checkIn,
+      advance_paid: input.data.advancePaid || 0,
       status: 'open',
       created_at: now,
       updated_at: now,
@@ -136,6 +142,7 @@ export async function tabRoutes(request: Request, bucket: R2Bucket, segments: st
       guest_name: input.data.guestName ?? current.guest_name,
       guest_email: input.data.guestEmail ?? current.guest_email,
       check_in: input.data.checkIn ?? current.check_in,
+      advance_paid: input.data.advancePaid ?? current.advance_paid ?? 0,
       updated_at: new Date().toISOString(),
     }));
     return json(tab);
@@ -178,7 +185,7 @@ export async function tabRoutes(request: Request, bucket: R2Bucket, segments: st
 
   if (orderId && (method === 'PATCH' || method === 'DELETE')) {
     if (!tabId.safeParse(orderId).success) throw new HttpError(400, 'Invalid order.');
-    const quantity = method === 'DELETE' ? 0 : z.object({ quantity: z.number().int().min(0).max(999) }).safeParse(await jsonBody(request)).data?.quantity;
+    const quantity = method === 'DELETE' ? 0 : z.object({ quantity: portions(0) }).safeParse(await jsonBody(request)).data?.quantity;
     if (quantity === undefined) throw new HttpError(400, 'Enter a quantity.');
     const tab = await updateJson<Tab>(bucket, openKey(id), 'This tab is closed or was not found.', current => {
       if (!current.orders.some(order => order.id === orderId)) throw new HttpError(404, 'That order was already removed.');

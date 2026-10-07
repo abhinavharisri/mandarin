@@ -77,6 +77,24 @@ function isoDate(day: number, month: number, year: number | undefined, reference
   return date.toISOString().slice(0, 10);
 }
 
+type DateOrder = 'dm' | 'md';
+type DateParts = [first: number, second: number, year?: number];
+
+/**
+ * Staff may write 2 October as "2/10" (day first) or "10/2" (month first). Choose the
+ * order that makes every date in the note valid and keeps them closest to today.
+ */
+function chooseDateOrder(dates: DateParts[], reference: Date): DateOrder {
+  const score = (order: DateOrder) => dates.reduce((total, [first, second, year]) => {
+    const iso = order === 'dm' ? isoDate(first, second, year, reference) : isoDate(second, first, year, reference);
+    return total + (iso ? Math.abs(Date.parse(`${iso}T00:00:00Z`) - reference.getTime()) / 86_400_000 : 100_000);
+  }, 0);
+  return score('md') < score('dm') ? 'md' : 'dm';
+}
+
+const datePieces = (match: RegExpMatchArray): DateParts =>
+  [Number(match[1]), Number(match[2]), match[3] ? Number(match[3]) : undefined];
+
 /** Splits "Panner 65 3 plates" into name and quantity, keeping dish names like "Chicken 65" intact. */
 function splitItem(left: string, lineAmount: number) {
   const cleaned = left.replace(/[\s.'’`,:;-]+$/, '').trim();
@@ -96,7 +114,9 @@ function splitItem(left: string, lineAmount: number) {
   const lowerUnit = unit.toLowerCase();
 
   // Weights and fractions stay in the description; the line is billed as one amount.
-  if (!Number.isInteger(quantity) || quantity < 1 || /^(kgs?|g|gms?|grams?)$/.test(lowerUnit)) {
+  // Half portions ("½", "1½", "2.5") stay as quantities; weights and other fractions go in the name.
+  const portion = quantity >= 0.5 && Number.isInteger(quantity * 2);
+  if (!portion || /^(kgs?|g|gms?|grams?)$/.test(lowerUnit)) {
     const label = `${quantityText}${/^(kgs?)$/.test(lowerUnit) ? ' kg' : lowerUnit ? ` ${lowerUnit}` : ''}`;
     return { description: `${description} (${label})`, quantity: 1, unitPrice: lineAmount };
   }
@@ -104,7 +124,8 @@ function splitItem(left: string, lineAmount: number) {
   const unitPrice = Math.round((lineAmount / quantity) * 100) / 100;
   // Keep exact totals: if the amount doesn't divide evenly, bill it as one line and show the count.
   if (Math.abs(unitPrice * quantity - lineAmount) > 0.001) {
-    return { description: `${description} × ${quantity}`, quantity: 1, unitPrice: lineAmount };
+    const count = Number.isInteger(quantity) ? String(quantity) : `${Math.floor(quantity) || ''}½`;
+    return { description: `${description} × ${count}`, quantity: 1, unitPrice: lineAmount };
   }
   return { description: description + perUnit, quantity, unitPrice };
 }
@@ -115,6 +136,19 @@ export function parseNotes(rawLines: string[], reference = new Date()): NotesImp
   let meal = '';
   let afterTotal = false;
 
+  // First pass: decide whether this note writes dates day-first or month-first.
+  const allDates: DateParts[] = [];
+  for (const raw of rawLines) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    const stay = line.match(/^check[\s-]*(in|out)\b\s*[:.-]?\s*(.*)$/i)?.[2].match(datePart);
+    const heading = line.match(dateOnly);
+    if (stay) allDates.push(datePieces(stay));
+    else if (heading) allDates.push(datePieces(heading));
+  }
+  const order = chooseDateOrder(allDates, reference);
+  const toIso = ([first, second, year]: DateParts) =>
+    order === 'dm' ? isoDate(first, second, year, reference) : isoDate(second, first, year, reference);
+
   for (const raw of rawLines) {
     const line = raw.replace(/\s+/g, ' ').trim();
     if (!line) continue;
@@ -124,7 +158,7 @@ export function parseNotes(rawLines: string[], reference = new Date()): NotesImp
     if (checkIn || checkOut) {
       const date = (checkIn || checkOut)![1].match(datePart);
       if (date) {
-        const value = isoDate(Number(date[1]), Number(date[2]), date[3] ? Number(date[3]) : undefined, reference);
+        const value = toIso(datePieces(date));
         if (checkIn) result.stayStart = value;
         else result.stayEnd = value;
       }
@@ -133,8 +167,8 @@ export function parseNotes(rawLines: string[], reference = new Date()): NotesImp
 
     const dateLine = line.match(dateOnly);
     if (dateLine) {
-      const month = Number(dateLine[2]);
-      day = month >= 1 && month <= 12 ? `${Number(dateLine[1])} ${months[month - 1]}` : line;
+      const iso = toIso(datePieces(dateLine));
+      day = iso ? `${Number(iso.slice(8, 10))} ${months[Number(iso.slice(5, 7)) - 1]}` : line;
       meal = '';
       afterTotal = false;
       continue;

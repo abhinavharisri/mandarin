@@ -4,6 +4,8 @@ export type InvoiceLine = { description: string; quantity: number; unitPrice: nu
 export type InvoiceData = {
   invoiceNumber: string;
   issueDate: Date;
+  /** Set when an issued invoice is edited; shown as "Revised" on the PDF. */
+  revisedAt?: Date;
   guestName: string;
   guestEmail?: string;
   stayStart: Date;
@@ -11,6 +13,8 @@ export type InvoiceData = {
   /** Optional room or villa name, e.g. "Villa 1". */
   stayLabel?: string;
   taxRate: number;
+  /** Advance already received; the PDF then shows the balance payable. */
+  advancePaid?: number;
   lineItems: InvoiceLine[];
   /** PNG bytes for the resort logo; the header is drawn without it when absent. */
   logoPng?: Uint8Array;
@@ -44,7 +48,17 @@ export function pdfSafe(text: string) {
 }
 
 export const money = (amount: number) => `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const date = (value: Date) => value.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Unambiguous dates such as "2 Oct 2026" (numeric dates read differently in India and the US). */
+export function date(value: Date) {
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(value).split('-').map(Number);
+  return `${day} ${monthNames[month - 1]} ${year}`;
+}
+
+/** 1.5 → "1½", 0.5 → "½". */
+export const quantityText = (quantity: number) =>
+  Number.isInteger(quantity) ? String(quantity) : `${Math.floor(quantity) || ''}½`;
 
 type TextOptions = { font: PDFFont; size: number; color?: ReturnType<typeof rgb>; width?: number; align?: 'left' | 'right' | 'center'; spacing?: number };
 
@@ -101,6 +115,7 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   }
   text(page, 'INVOICE', 340, 48, { font: serif, size: 28, width: 203, align: 'right' });
   text(page, 'MANDARIN ORCHID RESORT', 340, 82, { font: regular, size: 9, color: warmGrey, width: 203, align: 'right' });
+  if (data.revisedAt) text(page, `REVISED ${date(data.revisedAt).toUpperCase()}`, 340, 98, { font: bold, size: 7.5, color: gold, width: 203, align: 'right', spacing: 1 });
 
   line(page, 52, 128, 543, gold, 1);
   text(page, 'INVOICE DETAILS', 52, 148, { font: bold, size: 8, color: gold, spacing: 1.5 });
@@ -148,14 +163,15 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
     const rowHeight = Math.max(22, descriptionLines.length * 12 + 10);
     newPageIfNeeded(rowHeight);
     descriptionLines.forEach((descriptionLine, lineIndex) => text(page, descriptionLine, 64, rowY + lineIndex * 12, { font: regular, size: 9 }));
-    text(page, String(item.quantity), 350, rowY, { font: regular, size: 9, width: 40, align: 'right' });
+    text(page, quantityText(item.quantity), 350, rowY, { font: regular, size: 9, width: 40, align: 'right' });
     text(page, money(item.unitPrice), 395, rowY, { font: regular, size: 9, width: 70, align: 'right' });
     text(page, money(item.quantity * item.unitPrice), 465, rowY, { font: regular, size: 9, width: 66, align: 'right' });
     rowY += rowHeight;
     line(page, 52, rowY - 7, 543, rule, 0.5);
   });
 
-  if (rowY + 110 > 740) {
+  const advance = data.advancePaid && data.advancePaid > 0 ? Math.min(data.advancePaid, totals.total) : 0;
+  if (rowY + (advance ? 170 : 110) > 740) {
     page = pdf.addPage([595.28, 841.89]);
     rowY = 60;
   }
@@ -167,6 +183,13 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   box(page, 342, totalsY + 48, 201, 34, goldPale);
   text(page, 'TOTAL (INR)', 354, totalsY + 60, { font: bold, size: 10 });
   text(page, money(totals.total), 430, totalsY + 60, { font: bold, size: 10, width: 101, align: 'right' });
+  if (advance) {
+    text(page, 'Advance paid', 350, totalsY + 96, { font: regular, size: 9, color: warmGrey });
+    text(page, `- ${money(advance)}`, 430, totalsY + 96, { font: regular, size: 9, width: 101, align: 'right' });
+    box(page, 342, totalsY + 116, 201, 34, charcoal);
+    text(page, 'BALANCE PAYABLE', 354, totalsY + 128, { font: bold, size: 10, color: white });
+    text(page, money(Math.round((totals.total - advance) * 100) / 100), 430, totalsY + 128, { font: bold, size: 10, color: white, width: 101, align: 'right' });
+  }
 
   line(page, 52, 752, 543, gold, 0.75);
   text(page, 'Thank you for choosing Mandarin Orchid Resort.', 52, 767, { font: regular, size: 8, color: warmGrey, width: 491, align: 'center' });

@@ -73,4 +73,19 @@ export function downloadCsv(filename: string, rows: (string | number | null)[][]
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** 1.5 → "1½", 0.5 → "½", 3 → "3". */
+export const quantityLabel = (quantity: number) =>
+  Number.isInteger(quantity) ? String(quantity) : `${Math.floor(quantity) || ''}½`;
+
+/** Adds or removes a half portion: 1 → 1½, 1½ → 1, ½ stays ½. */
+export const toggleHalf = (quantity: number) =>
+  Number.isInteger(quantity) ? quantity + 0.5 : Math.max(0.5, quantity - 0.5);
+
+const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "2 Oct 2026" from yyyy-mm-dd, never ambiguous between day and month. */
+export function dayLabel(isoDate: string, withYear = true) {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return withYear ? `${day} ${monthShort[month - 1]} ${year}` : `${day} ${monthShort[month - 1]}`;
+}
+
 export const optionLabel = (name: string, option: string) => option ? `${name} · ${option}` : name;

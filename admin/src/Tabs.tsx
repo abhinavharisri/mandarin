@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api } from './client';
-import { inr, mealForHour, meals, optionLabel, resortNow, sectionLabel, shortDate } from './format';
+import { inr, mealForHour, meals, optionLabel, quantityLabel, resortNow, sectionLabel, shortDate, toggleHalf } from './format';
 import { MenuPicker } from './MenuPicker';
 import { InvoiceDraft, Menu, Notify, PickedLine, Tab, TabOrder, TabSummary } from './types';
 import { ConfirmDialog, Icon, Modal, Segmented, Spinner, stagger } from './ui';
@@ -38,6 +38,7 @@ export function draftFromTab(tab: Tab): InvoiceDraft {
     stayStart: tab.check_in,
     stayEnd: resortNow().date,
     stayLabel: tab.label,
+    advancePaid: tab.advance_paid || 0,
     lines,
   };
 }
@@ -145,7 +146,7 @@ export function Tabs({ menu, notify, onCheckout }: { menu: Menu | null; notify: 
                 <button type="button" className={selectedId === summary.id ? 'tab-card selected' : 'tab-card'} onClick={() => setSelectedId(summary.id)}>
                   <span className="tab-card-top"><b>{summary.label}</b><strong>{inr(summary.total)}</strong></span>
                   <span className="tab-card-meta">{summary.guest_name || 'Guest name not added'} · since {shortDate(summary.check_in)}</span>
-                  <span className="tab-card-meta">{summary.order_count} item{summary.order_count === 1 ? '' : 's'} · {ago(summary.last_order_at)}</span>
+                  <span className="tab-card-meta">{quantityLabel(summary.order_count)} item{summary.order_count === 1 ? '' : 's'} · {ago(summary.last_order_at)}{summary.advance_paid ? ` · advance ${inr(summary.advance_paid)}` : ''}</span>
                 </button>
               </li>
             ))}
@@ -189,7 +190,12 @@ export function Tabs({ menu, notify, onCheckout }: { menu: Menu | null; notify: 
                 <h2>{tab.label}</h2>
                 <p className="muted">{tab.guest_name || 'Guest name not added yet'}{tab.guest_email && ` · ${tab.guest_email}`}</p>
               </div>
-              <div className="tab-total"><span>Running total</span><strong key={tabTotal} className="pulse">{inr(tabTotal)}</strong></div>
+              <div className="tab-total">
+                <span>Running total</span><strong key={tabTotal} className="pulse">{inr(tabTotal)}</strong>
+                {tab.advance_paid ? (
+                  <small>Advance {inr(tab.advance_paid)} · {tabTotal >= tab.advance_paid ? `balance ${inr(tabTotal - tab.advance_paid)}` : `${inr(tab.advance_paid - tabTotal)} in credit`}</small>
+                ) : null}
+              </div>
             </div>
             <div className="tab-actions">
               <button type="button" className="primary-button" onClick={() => setAdding(true)} disabled={!menu}><Icon name="plus" size={15} />Add orders</button>
@@ -206,12 +212,15 @@ export function Tabs({ menu, notify, onCheckout }: { menu: Menu | null; notify: 
                     <li key={order.id} className={busyOrder === order.id ? 'busy' : ''}>
                       <span className="order-name">{optionLabel(order.name, order.option)}<small>{inr(order.unit_price)} each</small></span>
                       <span className="stepper">
-                        <button type="button" disabled={busyOrder === order.id} onClick={() => changeQuantity(order, order.quantity - 1)} aria-label={`One less ${order.name}`}>
-                          <Icon name={order.quantity === 1 ? 'trash' : 'minus'} size={13} />
+                        <button type="button" disabled={busyOrder === order.id} onClick={() => changeQuantity(order, Math.max(0, order.quantity - 1))} aria-label={`One less ${order.name}`}>
+                          <Icon name={order.quantity <= 1 ? 'trash' : 'minus'} size={13} />
                         </button>
-                        <b>{order.quantity}</b>
+                        <b>{quantityLabel(order.quantity)}</b>
                         <button type="button" disabled={busyOrder === order.id} onClick={() => changeQuantity(order, order.quantity + 1)} aria-label={`One more ${order.name}`}><Icon name="plus" size={13} /></button>
                       </span>
+                      <button type="button" className={Number.isInteger(order.quantity) ? 'half-button' : 'half-button active'} disabled={busyOrder === order.id}
+                        onClick={() => changeQuantity(order, toggleHalf(order.quantity))}
+                        aria-label={Number.isInteger(order.quantity) ? `Add a half portion of ${order.name}` : `Remove the half portion of ${order.name}`} title="Half portion">½</button>
                       <span className="order-amount">{inr(order.quantity * order.unit_price)}</span>
                     </li>
                   ))}
@@ -243,13 +252,14 @@ function OpenTabDialog({ notify, onClose, onOpened }: { notify: Notify; onClose:
   const [label, setLabel] = useState('');
   const [guestName, setGuestName] = useState('');
   const [checkIn, setCheckIn] = useState(resortNow().date);
+  const [advance, setAdvance] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     try {
-      const tab = await api<Tab>('/api/admin/tabs', { method: 'POST', body: JSON.stringify({ label, guestName, checkIn }) });
+      const tab = await api<Tab>('/api/admin/tabs', { method: 'POST', body: JSON.stringify({ label, guestName, checkIn, advancePaid: Number(advance) || 0 }) });
       notify(`Tab opened for ${tab.label}.`);
       onOpened(tab);
     } catch (error) {
@@ -268,7 +278,10 @@ function OpenTabDialog({ notify, onClose, onOpened }: { notify: Notify; onClose:
           {roomShortcuts.map(room => <button key={room} type="button" className={label === room ? 'chip-button active' : 'chip-button'} onClick={() => setLabel(room)}>{room}</button>)}
         </div>
         <label><span>Guest name <span className="optional">optional, can be added later</span></span><input value={guestName} onChange={event => setGuestName(event.target.value)} maxLength={140} autoComplete="off" /></label>
-        <label>Check-in date<input type="date" value={checkIn} onChange={event => setCheckIn(event.target.value)} required /></label>
+        <div className="form-row">
+          <label>Check-in date<input type="date" value={checkIn} onChange={event => setCheckIn(event.target.value)} required /></label>
+          <label><span>Advance paid (₹) <span className="optional">optional</span></span><input type="number" inputMode="decimal" min="0" step="0.01" value={advance} placeholder="0" onChange={event => setAdvance(event.target.value)} /></label>
+        </div>
         <div className="modal-actions">
           <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
           <button className="primary-button" disabled={busy || !label.trim()}>{busy ? <><Spinner /> Opening…</> : 'Open tab'}</button>
@@ -283,13 +296,14 @@ function EditTabDialog({ tab, notify, onClose, onSaved }: { tab: Tab; notify: No
   const [guestName, setGuestName] = useState(tab.guest_name);
   const [guestEmail, setGuestEmail] = useState(tab.guest_email);
   const [checkIn, setCheckIn] = useState(tab.check_in);
+  const [advance, setAdvance] = useState(tab.advance_paid ? String(tab.advance_paid) : '');
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     try {
-      onSaved(await api<Tab>(`/api/admin/tabs/${tab.id}`, { method: 'PATCH', body: JSON.stringify({ label, guestName, guestEmail, checkIn }) }));
+      onSaved(await api<Tab>(`/api/admin/tabs/${tab.id}`, { method: 'PATCH', body: JSON.stringify({ label, guestName, guestEmail, checkIn, advancePaid: Number(advance) || 0 }) }));
       notify('Tab details saved.');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not save the tab.', true);
@@ -304,7 +318,10 @@ function EditTabDialog({ tab, notify, onClose, onSaved }: { tab: Tab; notify: No
         <label>Villa or room<input value={label} onChange={event => setLabel(event.target.value)} maxLength={60} required data-autofocus /></label>
         <label>Guest name<input value={guestName} onChange={event => setGuestName(event.target.value)} maxLength={140} autoComplete="off" /></label>
         <label><span>Guest email <span className="optional">optional</span></span><input type="email" value={guestEmail} onChange={event => setGuestEmail(event.target.value)} maxLength={254} autoComplete="off" /></label>
-        <label>Check-in date<input type="date" value={checkIn} onChange={event => setCheckIn(event.target.value)} required /></label>
+        <div className="form-row">
+          <label>Check-in date<input type="date" value={checkIn} onChange={event => setCheckIn(event.target.value)} required /></label>
+          <label><span>Advance paid (₹) <span className="optional">optional</span></span><input type="number" inputMode="decimal" min="0" step="0.01" value={advance} placeholder="0" onChange={event => setAdvance(event.target.value)} /></label>
+        </div>
         <div className="modal-actions">
           <button type="button" className="ghost-button" onClick={onClose}>Cancel</button>
           <button className="primary-button" disabled={busy || !label.trim()}>{busy ? <><Spinner /> Saving…</> : 'Save details'}</button>
@@ -325,7 +342,7 @@ function AddOrdersDialog({ tab, menu, notify, onClose, onAdded }: { tab: Tab; me
         method: 'POST',
         body: JSON.stringify({ orders: lines.map(line => ({ ...line, section: sectionLabel(date, meal) })) }),
       });
-      notify(`Added ${lines.reduce((sum, line) => sum + line.quantity, 0)} items to ${tab.label}.`);
+      notify(`Added ${quantityLabel(lines.reduce((sum, line) => sum + line.quantity, 0))} items to ${tab.label}.`);
       onAdded(saved);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not add the orders.', true);
