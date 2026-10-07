@@ -60,7 +60,12 @@ export default defineConfig({
             next();
             return;
           }
-          const file = publicAsset(url) || publicPage(url);
+          let file = publicAsset(url) || publicPage(url);
+          if (!file && !/^\/(css|js|images)\//.test(url) && !/\.[a-z0-9]+$/i.test(url)) {
+            // Unknown page: show the 404 page with a 404 status, like Cloudflare Pages.
+            file = path.join(projectRoot, '404.html');
+            response.statusCode = 404;
+          }
           if (!file) {
             next();
             return;

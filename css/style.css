@@ -2504,3 +2504,97 @@ body.mobile-menu-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .review-card, .review-thanks { animation: none; }
 }
+
+/* ===== 404 · Lost in the mist ===== */
+.lost {
+  position: relative;
+  min-height: calc(100vh - var(--nav-h));
+  display: grid;
+  place-items: center;
+  padding: 80px 24px 220px;
+  overflow: hidden;
+  text-align: center;
+  background: linear-gradient(180deg, var(--ivory) 0%, #f6efe2 45%, #efe4cf 100%);
+}
+.lost-sky { position: absolute; inset: 0; pointer-events: none; }
+.lost-sun {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  width: 340px;
+  height: 340px;
+  margin-left: -170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217, 185, 106, 0.55) 0%, rgba(217, 185, 106, 0.18) 45%, rgba(217, 185, 106, 0) 70%);
+  animation: lost-sun 9s var(--ease-luxury) infinite alternate;
+}
+.lost-hills { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 300px; }
+.hill { transform-origin: bottom; }
+.hill-far { fill: #dfe1cf; animation: hill-breathe 14s ease-in-out infinite alternate; }
+.hill-mid { fill: #c6cfb0; animation: hill-breathe 11s ease-in-out infinite alternate-reverse; }
+.hill-near { fill: #9fae88; }
+.mist {
+  position: absolute;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 70%);
+  filter: blur(6px);
+  opacity: 0.8;
+}
+.mist-1 { width: 70%; bottom: 150px; left: -30%; animation: mist-drift 38s linear infinite; }
+.mist-2 { width: 55%; bottom: 90px; left: -60%; animation: mist-drift 52s linear infinite; animation-delay: -18s; }
+.mist-3 { width: 80%; bottom: 30px; left: -40%; animation: mist-drift 64s linear infinite; animation-delay: -30s; opacity: 0.9; }
+
+.lost-content { position: relative; z-index: 1; max-width: 720px; animation: lost-rise 1.1s var(--ease-out) both 0.2s; }
+.lost-code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 18px 0 10px;
+  font-family: var(--font-serif);
+  font-size: clamp(110px, 18vw, 190px);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--charcoal);
+  /* Straight (lining) figures so both 4s sit level with the compass. */
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
+}
+.compass { display: inline-block; width: 0.82em; height: 0.82em; }
+.compass svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 14px 30px rgba(139, 107, 20, 0.18)); }
+.compass-ring { fill: var(--ivory); stroke: var(--gold); stroke-width: 2.5; }
+.compass-inner { fill: none; stroke: var(--gold-muted); stroke-width: 1; stroke-dasharray: 2 5; }
+.compass-ticks line { stroke: var(--gold); stroke-width: 2; stroke-linecap: round; }
+.compass text { fill: var(--gold-dark); font-family: var(--font-sans); font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+.needle-north { fill: var(--gold); }
+.needle-south { fill: var(--charcoal-mid); }
+.compass-needle circle { fill: var(--ivory); stroke: var(--gold-dark); stroke-width: 2; }
+
+.lost-title { margin-bottom: 18px; font-family: var(--font-serif); font-size: clamp(34px, 4.6vw, 58px); font-weight: 300; line-height: 1.1; color: var(--charcoal); }
+.lost-title em { font-style: italic; color: var(--gold); }
+.lost-text { max-width: 540px; margin: 0 auto 36px; font-size: 14px; line-height: 1.9; color: var(--warm-grey); }
+.lost-path { padding: 2px 8px; font-family: var(--font-sans); font-size: 12px; color: var(--gold-dark); background: var(--gold-pale); word-break: break-all; }
+.lost-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-bottom: 34px; }
+.lost-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; }
+.lost-links a { color: var(--charcoal); border-bottom: 1px solid var(--light-grey); padding-bottom: 4px; transition: color var(--t-fast), border-color var(--t-fast); }
+.lost-links a:hover { color: var(--gold); border-color: var(--gold); }
+
+@keyframes lost-sun { from { transform: translateY(30px); } to { transform: translateY(-10px); } }
+@keyframes hill-breathe { from { transform: scaleY(1); } to { transform: scaleY(1.04); } }
+@keyframes mist-drift { from { transform: translateX(0); } to { transform: translateX(260%); } }
+@keyframes lost-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 760px) {
+  .lost { padding: 50px 20px 190px; min-height: 80vh; }
+  .lost-hills { height: 220px; }
+  .lost-sun { width: 240px; height: 240px; margin-left: -120px; bottom: 90px; }
+  .lost-code { gap: 10px; }
+  .lost-actions > * { flex: 1 1 100%; justify-content: center; }
+  .lost-links { gap: 12px 20px; letter-spacing: 2px; }
+  .lost .section-label { gap: 10px; font-size: 8px; letter-spacing: 2.5px; white-space: nowrap; }
+  .lost .section-label::before, .lost .section-label::after { width: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lost-sun, .hill-far, .hill-mid, .mist, .lost-content { animation: none; }
+}

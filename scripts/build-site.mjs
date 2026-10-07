@@ -26,10 +26,10 @@ async function fingerprint(asset) {
 }
 
 async function versionAssets(html) {
-  const pattern = /(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js))"/g;
-  const assets = [...new Set([...html.matchAll(pattern)].map(match => match[2]))];
+  const pattern = /(href|src)="(\/?)((?:css|js)\/[^"?#]+\.(?:css|js))"/g;
+  const assets = [...new Set([...html.matchAll(pattern)].map(match => match[3]))];
   const versions = new Map(await Promise.all(assets.map(async asset => [asset, await fingerprint(asset)])));
-  return html.replace(pattern, (whole, attribute, asset) => versions.get(asset) ? `${attribute}="${asset}?v=${versions.get(asset)}"` : whole);
+  return html.replace(pattern, (whole, attribute, slash, asset) => versions.get(asset) ? `${attribute}="${slash}${asset}?v=${versions.get(asset)}"` : whole);
 }
 
 const pages = (await fs.readdir(root)).filter(name => name.endsWith('.html'));
