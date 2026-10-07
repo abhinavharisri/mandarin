@@ -1,4 +1,4 @@
-export type View = 'overview' | 'tabs' | 'billing' | 'menu' | 'reports' | 'gallery';
+export type View = 'overview' | 'tabs' | 'billing' | 'menu' | 'reports' | 'reviews' | 'gallery';
 export type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
 export type GalleryImage = {

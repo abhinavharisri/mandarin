@@ -8,6 +8,7 @@ import { Login } from './Login';
 import { MenuPage } from './MenuPage';
 import { Overview } from './Overview';
 import { Reports } from './Reports';
+import { ReviewsPage } from './ReviewsPage';
 import { Tabs } from './Tabs';
 import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Notify, Session, View } from './types';
 import { Icon, Toast, Toasts } from './ui';
@@ -19,6 +20,7 @@ const views: { id: View; label: string; title: string; subtitle: string; icon: s
   { id: 'billing', label: 'Billing', title: 'Billing & invoices', subtitle: 'Create branded invoices and track history', icon: 'billing' },
   { id: 'menu', label: 'Menu', title: 'Food & beverages menu', subtitle: 'Prices and items used for orders and bills', icon: 'utensils' },
   { id: 'reports', label: 'Reports', title: 'Reports & exports', subtitle: 'Revenue, best sellers and accounting exports', icon: 'chart' },
+  { id: 'reviews', label: 'Reviews', title: 'Guest reviews', subtitle: 'Approve reviews and share the review link', icon: 'star' },
   { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
 ];
 const idleLimitMs = 30 * 60 * 1000;
@@ -57,6 +59,7 @@ export function App() {
   const [gate, setGate] = useState<{ mode: GateMode; leaving: boolean } | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [draft, setDraft] = useState<InvoiceDraft | null>(null);
+  const [pendingReviews, setPendingReviews] = useState(0);
   const lastActivity = useRef(Date.now());
   const toastId = useRef(0);
 
@@ -131,6 +134,9 @@ export function App() {
     refresh()
       .catch(error => notify(error instanceof Error ? error.message : 'Could not load admin data.', true))
       .finally(() => setDataLoading(false));
+    api<{ reviews: { status: string }[] }>('/api/admin/reviews')
+      .then(list => setPendingReviews(list.reviews.filter(review => review.status === 'pending').length))
+      .catch(() => {});
     api<Menu>('/api/admin/menu').then(setMenu)
       .catch(error => notify(error instanceof Error ? error.message : 'Could not load the menu.', true));
   }, [authenticated, refresh, notify]);
@@ -229,6 +235,7 @@ export function App() {
             <button key={item.id} type="button" className={view === item.id ? 'nav-item selected' : 'nav-item'}
               aria-current={view === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
               <Icon name={item.icon} size={18} /><span>{item.label}</span>
+              {item.id === 'reviews' && pendingReviews > 0 && <span className="nav-badge" aria-label={`${pendingReviews} waiting`}>{pendingReviews}</span>}
             </button>
           ))}
           <p className="nav-heading">WEBSITE</p>
@@ -270,6 +277,7 @@ export function App() {
             menu={menu} draft={draft} onDraftUsed={() => setDraft(null)} />}
           {view === 'menu' && <MenuPage menu={menu} onSaved={setMenu} notify={notify} />}
           {view === 'reports' && <Reports notify={notify} />}
+          {view === 'reviews' && <ReviewsPage notify={notify} onPendingChange={setPendingReviews} />}
           {view === 'gallery' && <Gallery images={gallery} loading={dataLoading} refresh={refresh} notify={notify} />}
         </main>
       </div>
@@ -278,6 +286,7 @@ export function App() {
         {views.map(item => (
           <button key={item.id} type="button" className={view === item.id ? 'selected' : ''} aria-current={view === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
             <Icon name={item.icon} size={20} /><span>{item.label}</span>
+            {item.id === 'reviews' && pendingReviews > 0 && <span className="nav-badge" aria-hidden="true">{pendingReviews}</span>}
           </button>
         ))}
       </nav>

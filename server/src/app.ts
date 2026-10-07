@@ -12,6 +12,7 @@ import { buildReport, InvoiceRecord } from './reports.js';
 import { listKeys, putJson, readJson, requireJson } from './storage.js';
 import { closeTab, tabRoutes } from './tabs.js';
 import { moveToTrash, purgeExpired, trashRoutes } from './trash.js';
+import { adminReviewRoutes, publicReviewRoutes } from './reviews.js';
 
 type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
@@ -170,6 +171,11 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     });
   }
 
+  if (path === '/api/reviews') {
+    const response = await publicReviewRoutes(request, env.BUCKET);
+    if (response) return response;
+  }
+
   if (segments[0] !== 'admin') throw new HttpError(404, 'Not found.');
 
   const config = adminConfig(env, request);
@@ -305,6 +311,11 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     await moveToTrash(bucket, id.data);
     await purgeExpired(bucket).catch(error => console.error('Could not clear expired deleted invoices', error));
     return noContent();
+  }
+
+  if (segments[1] === 'reviews') {
+    const response = await adminReviewRoutes(request, bucket, segments);
+    if (response) return response;
   }
 
   if (segments[1] === 'trash') {

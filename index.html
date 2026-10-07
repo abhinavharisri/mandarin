@@ -33,6 +33,7 @@
   <a href="amenities.html" class="mobile-nav-link">Amenities</a>
   <a href="gallery.html" class="mobile-nav-link">Gallery</a>
   <a href="attractions.html" class="mobile-nav-link">Attractions</a>
+  <a href="reviews.html" class="mobile-nav-link">Reviews</a>
   <a href="contactus.html" class="mobile-nav-link">Contact</a>
 </nav>
 
@@ -551,6 +552,11 @@
       <button class="t-dot" aria-label="Review 2"></button>
       <button class="t-dot" aria-label="Review 3"></button>
     </div>
+    <div class="testimonial-links">
+      <a href="reviews.html">Read all reviews</a>
+      <span aria-hidden="true">·</span>
+      <a href="reviews.html#write-review">Write a review</a>
+    </div>
   </div>
 </section>
 
@@ -726,6 +732,7 @@
         <li><a href="gallery.html">Gallery</a></li>
         <li><a href="attractions.html">Attractions</a></li>
         <li><a href="blog.html">Journal</a></li>
+        <li><a href="reviews.html">Reviews</a></li>
         <li><a href="contactus.html">Contact Us</a></li>
       </ul>
     </div>
@@ -784,13 +791,8 @@
 
   if (PLACE_ID === 'YOUR_PLACE_ID' || API_KEY === 'YOUR_API_KEY') return;
 
-  var starSVG = '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
-
   window._initGoogleReviews = function() {
-    var section = document.querySelector('.testimonials-section');
-    if (!section) return;
-    var inner = section.querySelector('.testimonials-inner');
-    var dotsContainer = inner.querySelector('.testimonial-dots');
+    if (!document.querySelector('.testimonials-section')) return;
 
     var dummy = document.createElement('div');
     document.body.appendChild(dummy);
@@ -800,43 +802,7 @@
       document.body.removeChild(dummy);
       if (status !== google.maps.places.PlacesServiceStatus.OK || !place.reviews || !place.reviews.length) return;
 
-      inner.querySelectorAll('.testimonial-slide').forEach(function(el) { el.remove(); });
-      dotsContainer.innerHTML = '';
-
-      place.reviews.forEach(function(review, i) {
-        var text = review.text.length > 300 ? review.text.slice(0, 297) + '…' : review.text;
-        var stars = Array(Math.min(Math.round(review.rating), 5)).fill(starSVG).join('');
-
-        var slide = document.createElement('div');
-        slide.className = 'testimonial-slide' + (i === 0 ? ' active' : '');
-        slide.innerHTML =
-          '<div class="testimonial-border">' +
-            '<div class="testimonial-rating">' + stars + '</div>' +
-            '<p class="testimonial-text">“' + text + '”</p>' +
-          '</div>' +
-          '<p class="testimonial-author">— ' + review.author_name + '</p>';
-        dotsContainer.before(slide);
-
-        var dot = document.createElement('button');
-        dot.className = 't-dot' + (i === 0 ? ' active' : '');
-        dot.setAttribute('aria-label', 'Review ' + (i + 1));
-        dotsContainer.appendChild(dot);
-      });
-
-      var slides = inner.querySelectorAll('.testimonial-slide');
-      var dots   = inner.querySelectorAll('.t-dot');
-      var tIdx   = 0;
-
-      function goT(idx) {
-        slides[tIdx].classList.remove('active');
-        if (dots[tIdx]) dots[tIdx].classList.remove('active');
-        tIdx = (idx + slides.length) % slides.length;
-        slides[tIdx].classList.add('active');
-        if (dots[tIdx]) dots[tIdx].classList.add('active');
-      }
-
-      dots.forEach(function(dot, i) { dot.addEventListener('click', function() { goT(i); }); });
-      setInterval(function() { goT(tIdx + 1); }, 6000);
+      if (window.mandarinTestimonials) window.mandarinTestimonials.addGoogleReviews(place.reviews);
     });
   };
 

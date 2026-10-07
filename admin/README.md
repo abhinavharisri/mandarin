@@ -49,6 +49,14 @@ There is no visible admin link on the public site. Go to `/admin` directly, type
 - Exports: a branded **PDF report** for accounting, an **invoices CSV** and a **line items CSV** (opens in Excel or Google Sheets).
 - Invoices now store their items, villa, subtotal and tax for reporting. Invoices created before this are counted in totals as "Not itemised".
 
+## Guest reviews
+
+- **Public page:** `mandarinorchid.in/reviews` (also `/review` and `/feedback`) shows the average rating, a star breakdown and all published reviews, with a form for guests to write their own. Linked from every page's footer and mobile menu, and from the homepage "Guest Voices" carousel.
+- **Moderation:** new reviews wait in the dashboard's **Reviews** page (with a count badge in the sidebar) until approved. Reviews can be published, hidden, featured (pinned to the top of the page and the carousel) or deleted.
+- **Sharing:** the Reviews page has the link with **Copy link**, **Share on WhatsApp** (pre-written message) and a **QR code** that downloads as a print-quality PNG for reception.
+- **Homepage carousel:** shows published reviews first, then Google reviews rated 4★ and above, falling back to the reviews written into the page. Review text is always inserted as plain text.
+- **Spam protection:** a hidden field bots fill in, a minimum time to fill the form, same-site requests only, 3 reviews per visitor per hour and at most 300 waiting reviews. Visitors' IP addresses are not stored. Only the name, rating, review and optional stay details are kept.
+
 ## Gallery and invoices
 
 - The existing gallery photos are included in the dashboard. Removing one hides it from the public gallery without deleting the original website image.

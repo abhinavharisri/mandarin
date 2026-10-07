@@ -17,7 +17,7 @@ await Promise.all(publicDirectories.map(name => fs.cp(path.join(root, name), pat
   filter: source => path.basename(source) !== '.DS_Store',
 })));
 // _headers holds Cloudflare Pages security headers for the admin dashboard.
-for (const optional of ['_headers', 'robots.txt', 'sitemap.xml', 'favicon.ico']) {
+for (const optional of ['_headers', '_redirects', 'robots.txt', 'sitemap.xml', 'favicon.ico']) {
   await fs.copyFile(path.join(root, optional), path.join(out, optional)).catch(() => {});
 }
 

@@ -178,23 +178,110 @@ document.querySelectorAll('.carousel-section').forEach(section => {
   setInterval(() => move(1), 6000);
 });
 
-/* ===== Testimonials Carousel ===== */
+/* ===== Testimonials Carousel =====
+   Shows the resort's own approved reviews first, then Google reviews (handed in by the
+   Google script on the homepage). Falls back to the reviews written into the page.
+   Review text is always inserted as text, never as HTML. */
 const testimonialSection = document.querySelector('.testimonials-section');
 if (testimonialSection) {
-  const slides = testimonialSection.querySelectorAll('.testimonial-slide');
-  const dots   = testimonialSection.querySelectorAll('.t-dot');
+  const inner = testimonialSection.querySelector('.testimonials-inner');
+  const dotsWrap = inner.querySelector('.testimonial-dots');
+  const starPath = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+  const sources = { own: [], google: [] };
+  let slides = [];
+  let dots = [];
   let tIdx = 0;
+  let timer = null;
+  let paused = false;
 
   const goT = idx => {
-    slides[tIdx].classList.remove('active');
+    if (!slides.length) return;
+    slides[tIdx]?.classList.remove('active');
     dots[tIdx]?.classList.remove('active');
     tIdx = (idx + slides.length) % slides.length;
     slides[tIdx].classList.add('active');
     dots[tIdx]?.classList.add('active');
   };
 
-  dots.forEach((dot, i) => dot.addEventListener('click', () => goT(i)));
-  setInterval(() => goT(tIdx + 1), 6000);
+  const start = () => {
+    clearInterval(timer);
+    slides = [...inner.querySelectorAll('.testimonial-slide')];
+    dots = [...dotsWrap.querySelectorAll('.t-dot')];
+    tIdx = Math.max(0, slides.findIndex(slide => slide.classList.contains('active')));
+    dots.forEach((dot, i) => dot.addEventListener('click', () => goT(i)));
+    if (slides.length > 1) timer = setInterval(() => { if (!paused) goT(tIdx + 1); }, 6000);
+  };
+
+  const slideFor = (review, index) => {
+    const slide = document.createElement('div');
+    slide.className = `testimonial-slide${index === 0 ? ' active' : ''}`;
+    const border = document.createElement('div');
+    border.className = 'testimonial-border';
+    const rating = document.createElement('div');
+    rating.className = 'testimonial-rating';
+    rating.setAttribute('role', 'img');
+    rating.setAttribute('aria-label', `${review.rating} out of 5 stars`);
+    for (let i = 0; i < Math.min(5, Math.round(review.rating)); i++) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', starPath);
+      svg.append(path);
+      rating.append(svg);
+    }
+    const text = document.createElement('p');
+    text.className = 'testimonial-text';
+    const body = review.text.length > 300 ? `${review.text.slice(0, 297)}…` : review.text;
+    text.textContent = `“${body}”`;
+    border.append(rating, text);
+    const author = document.createElement('p');
+    author.className = 'testimonial-author';
+    author.textContent = `— ${review.author}${review.meta ? ` · ${review.meta}` : ''}`;
+    slide.append(border, author);
+    return slide;
+  };
+
+  const render = () => {
+    const reviews = [...sources.own, ...sources.google].slice(0, 12);
+    if (!reviews.length) return;
+    inner.querySelectorAll('.testimonial-slide').forEach(slide => slide.remove());
+    const newDots = reviews.map((_, i) => {
+      const dot = document.createElement('button');
+      dot.className = `t-dot${i === 0 ? ' active' : ''}`;
+      dot.setAttribute('aria-label', `Review ${i + 1}`);
+      return dot;
+    });
+    reviews.forEach((review, i) => dotsWrap.before(slideFor(review, i)));
+    dotsWrap.replaceChildren(...newDots);
+    start();
+  };
+
+  window.mandarinTestimonials = {
+    /** Called by the Google Places script with place.reviews. */
+    addGoogleReviews(reviews) {
+      sources.google = (reviews || [])
+        .filter(review => review.text && review.rating >= 4)
+        .map(review => ({ text: review.text, rating: review.rating, author: review.author_name, meta: 'Google' }));
+      render();
+    },
+  };
+
+  testimonialSection.addEventListener('mouseenter', () => { paused = true; });
+  testimonialSection.addEventListener('mouseleave', () => { paused = false; });
+  testimonialSection.addEventListener('focusin', () => { paused = true; });
+  testimonialSection.addEventListener('focusout', () => { paused = false; });
+  start();
+
+  if (location.protocol.startsWith('http')) {
+    fetch('/api/reviews', { headers: { Accept: 'application/json' } })
+      .then(response => (response.ok ? response.json() : null))
+      .then(data => {
+        if (!data || !Array.isArray(data.reviews)) return;
+        sources.own = data.reviews.map(review => ({ text: review.text, rating: review.rating, author: review.name, meta: review.stay }));
+        render();
+      })
+      .catch(() => {});
+  }
 }
 
 /* ===== Room Carousel ===== */
