@@ -13,6 +13,7 @@ import { listKeys, putJson, readJson, requireJson } from './storage.js';
 import { closeTab, tabRoutes } from './tabs.js';
 import { moveToTrash, purgeExpired, trashRoutes } from './trash.js';
 import { adminReviewRoutes, publicReviewRoutes } from './reviews.js';
+import { adminEnquiryRoutes, publicEnquiryRoutes } from './enquiries.js';
 
 type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
@@ -176,6 +177,11 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     if (response) return response;
   }
 
+  if (path === '/api/enquiries') {
+    const response = await publicEnquiryRoutes(request, env.BUCKET);
+    if (response) return response;
+  }
+
   if (segments[0] !== 'admin') throw new HttpError(404, 'Not found.');
 
   const config = adminConfig(env, request);
@@ -311,6 +317,11 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     await moveToTrash(bucket, id.data);
     await purgeExpired(bucket).catch(error => console.error('Could not clear expired deleted invoices', error));
     return noContent();
+  }
+
+  if (segments[1] === 'enquiries') {
+    const response = await adminEnquiryRoutes(request, bucket, segments);
+    if (response) return response;
   }
 
   if (segments[1] === 'reviews') {

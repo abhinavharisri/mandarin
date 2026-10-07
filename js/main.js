@@ -2,15 +2,43 @@
    MANDARIN ORCHID RESORT — Main JavaScript
    ============================================================ */
 
-/* ===== Page Loader ===== */
+/* ===== Page Loader =====
+   The full logo animation plays on the first page of a visit; later pages get a quick
+   version. The loader lifts as soon as the main photo is ready (not after every image
+   and script has downloaded) and never stays longer than a few seconds on slow
+   connections. Hero text animations start when it lifts (body.is-ready). */
 const loader = document.querySelector('.page-loader');
+const markReady = () => document.body.classList.add('is-ready');
 if (loader) {
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      loader.classList.add('hidden');
-      document.body.classList.remove('loading');
-    }, 1800);
-  });
+  let seenThisVisit = false;
+  try {
+    seenThisVisit = sessionStorage.getItem('mo-visited') === '1';
+    sessionStorage.setItem('mo-visited', '1');
+  } catch { /* private browsing: always show the full animation */ }
+  if (seenThisVisit) loader.classList.add('quick');
+
+  const minimum = seenThisVisit ? 350 : 1500; // let the logo animation finish
+  const maximum = seenThisVisit ? 1200 : 3000; // never keep visitors waiting longer
+  let revealed = false;
+  const reveal = () => {
+    if (revealed) return;
+    revealed = true;
+    loader.classList.add('hidden');
+    document.body.classList.remove('loading');
+    markReady();
+  };
+  const sinceStart = () => performance.now();
+  const leadImage = document.querySelector('.hero-slide.active img, .page-hero-img img');
+  const leadImageReady = !leadImage || leadImage.complete
+    ? Promise.resolve()
+    : new Promise(resolve => {
+      leadImage.addEventListener('load', resolve, { once: true });
+      leadImage.addEventListener('error', resolve, { once: true });
+    });
+  leadImageReady.then(() => setTimeout(reveal, Math.max(0, minimum - sinceStart())));
+  setTimeout(reveal, Math.max(0, maximum - sinceStart()));
+} else {
+  markReady();
 }
 
 /* ===== Custom Cursor ===== */
@@ -134,11 +162,16 @@ if (parallaxEls.length) {
   handleParallax();
 }
 
-/* ===== Hero Slider ===== */
+/* ===== Hero Slider =====
+   Slow cross-fade with a gentle zoom on each photo (in CSS), a numbered caption and
+   progress lines. Pauses while the tab is in the background. */
 const heroSlider = document.querySelector('.hero-slides');
 if (heroSlider) {
   const slides  = heroSlider.querySelectorAll('.hero-slide');
   const dots    = document.querySelectorAll('.hero-dot');
+  const indexLabel = document.querySelector('[data-hero-index]');
+  const captionLabel = document.querySelector('[data-hero-caption]');
+  const interval = 7000;
   let current   = 0;
   let timer;
 
@@ -147,15 +180,28 @@ if (heroSlider) {
     dots[current]?.classList.remove('active');
     current = (idx + slides.length) % slides.length;
     slides[current].classList.add('active');
-    dots[current]?.classList.add('active');
+    // Restart the progress line on the active dot.
+    const dot = dots[current];
+    if (dot) {
+      dot.classList.remove('active');
+      void dot.offsetWidth;
+      dot.classList.add('active');
+    }
+    if (indexLabel) indexLabel.textContent = String(current + 1).padStart(2, '0');
+    if (captionLabel) captionLabel.textContent = slides[current].dataset.caption || '';
   };
 
   const next = () => goTo(current + 1);
-  const startTimer = () => { clearInterval(timer); timer = setInterval(next, 5500); };
+  const startTimer = () => { clearInterval(timer); timer = setInterval(next, interval); };
+  document.documentElement.style.setProperty('--hero-interval', `${interval}ms`);
 
   document.querySelector('.hero-arrow-next')?.addEventListener('click', () => { next(); startTimer(); });
   document.querySelector('.hero-arrow-prev')?.addEventListener('click', () => { goTo(current - 1); startTimer(); });
   dots.forEach((dot, i) => dot.addEventListener('click', () => { goTo(i); startTimer(); }));
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(timer);
+    else startTimer();
+  });
 
   startTimer();
 }
@@ -335,36 +381,126 @@ if (fineDiningCarouselImgs.length > 0) {
   setInterval(() => moveFineDining(1), 5000);
 }
 
-/* ===== Contact Form WhatsApp Link ===== */
+/* ===== Enquiries =====
+   Contact-form and booking-bar requests are saved for the team (they appear in the
+   dashboard's Enquiries page) and then continue on WhatsApp. WhatsApp opens straight
+   away, inside the click, so browsers never block it as a pop-up; the enquiry is sent
+   in the background with keepalive so it arrives even if the visitor switches apps. */
+const pageOpenedAt = Date.now();
+const resortWhatsApp = '916369233305';
+const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const prettyDate = iso => {
+  if (!iso) return '';
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${day} ${monthShort[month - 1]} ${year}`;
+};
+const nightsBetween = (from, to) => (from && to ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) : 0);
+const todayIso = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+const saveEnquiry = data => {
+  if (!location.protocol.startsWith('http')) return;
+  try {
+    fetch('/api/enquiries', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, elapsedMs: Date.now() - pageOpenedAt }),
+    }).catch(() => {});
+  } catch { /* the WhatsApp message still reaches the team */ }
+};
+const openWhatsApp = text => window.open(`https://api.whatsapp.com/send?phone=${resortWhatsApp}&text=${encodeURIComponent(text)}`, '_blank');
+
+/** Keeps check-out on or after check-in, and both from today onwards. */
+const linkDateInputs = (checkIn, checkOut) => {
+  if (!checkIn || !checkOut) return;
+  checkIn.min = todayIso();
+  checkOut.min = todayIso();
+  checkIn.addEventListener('change', () => {
+    checkOut.min = checkIn.value || todayIso();
+    if (checkOut.value && checkIn.value && checkOut.value <= checkIn.value) checkOut.value = '';
+  });
+};
+
+const showFormNote = (anchor, text, isError) => {
+  let note = anchor.parentElement.querySelector('.enquiry-note-msg');
+  if (!note) {
+    note = document.createElement('p');
+    note.className = 'enquiry-note-msg';
+    note.setAttribute('role', 'status');
+    anchor.after(note);
+  }
+  note.textContent = text;
+  note.classList.toggle('error', Boolean(isError));
+};
+
 const contactForm = document.querySelector('#contact-form');
 if (contactForm) {
+  linkDateInputs(document.querySelector('#check-in'), document.querySelector('#check-out'));
   contactForm.addEventListener('submit', event => {
     event.preventDefault();
-
-    const firstName = document.querySelector('#first-name')?.value.trim() || '';
-    const lastName = document.querySelector('#last-name')?.value.trim() || '';
-    const email = document.querySelector('#email')?.value.trim() || '';
-    const phone = document.querySelector('#phone')?.value.trim() || '';
-    const checkIn = document.querySelector('#check-in')?.value || '';
-    const checkOut = document.querySelector('#check-out')?.value || '';
-    const roomType = document.querySelector('#room-type')?.value || 'a room';
-    const guestCount = document.querySelector('#guest-count')?.value || '1 Guest';
-    const userMessage = document.querySelector('#user-message')?.value.trim() || 'No special requests.';
+    const value = selector => document.querySelector(selector)?.value.trim() || '';
+    const firstName = value('#first-name');
+    const lastName = value('#last-name');
+    const email = value('#email');
+    const phone = value('#phone');
+    const checkIn = value('#check-in');
+    const checkOut = value('#check-out');
+    const roomType = value('#room-type');
+    const guestCount = value('#guest-count') || '1 Guest';
+    const userMessage = value('#user-message');
+    const submit = contactForm.querySelector('[type="submit"]');
 
     if (!firstName || !email) {
-      alert('Please enter your first name and email address to send the message.');
+      showFormNote(submit, 'Please add your first name and email address so we can reply.', true);
+      return;
+    }
+    if (checkIn && checkOut && checkOut < checkIn) {
+      showFormNote(submit, 'Check-out must be after check-in.', true);
       return;
     }
 
-    const fullName = `${firstName}${lastName ? ' ' + lastName : ''}`;
-    const checkInText = checkIn ? `Check-in: ${checkIn}` : 'Check-in date: not specified';
-    const checkOutText = checkOut ? `Check-out: ${checkOut}` : 'Check-out date: not specified';
+    const fullName = `${firstName}${lastName ? ` ${lastName}` : ''}`;
+    const nights = nightsBetween(checkIn, checkOut);
+    const stay = checkIn && checkOut ? `${prettyDate(checkIn)} to ${prettyDate(checkOut)} (${nights} night${nights === 1 ? '' : 's'})`
+      : checkIn ? `from ${prettyDate(checkIn)}` : 'dates not decided yet';
+    openWhatsApp(`Hello Mandarin Orchid team.\n\nMy name is ${fullName}.\nStay: ${stay}\nGuests: ${guestCount}\nRoom type: ${roomType || 'Not sure yet'}\n\nMessage / Special Requests:\n${userMessage || 'No special requests.'}\n\nPlease let me know availability, best rates, and any recommendations for a tranquil stay in Kotagiri. You can reach me at ${email}${phone ? ` or ${phone}` : ''}.\n\nThank you!`);
+    saveEnquiry({
+      source: 'contact', name: fullName, email, phone, checkIn, checkOut, room: roomType, guests: guestCount, message: userMessage,
+      website: value('#contact-website'),
+    });
+    showFormNote(submit, 'Thank you! Your enquiry has reached our team, and WhatsApp has opened so you can chat with us directly.');
+  });
+}
 
-    const messageText = `Hello Mandarin Orchid team.\n\nMy name is ${fullName}.\n${checkInText}\n${checkOutText}\nGuests: ${guestCount}\nRoom type: ${roomType}\n\nMessage / Special Requests:\n${userMessage}\n\nPlease let me know availability, best rates, and any recommendations for a tranquil stay in Kotagiri. You can reach me at ${email}${phone ? ` or ${phone}` : ''}.\n\nThank you!`;
-    const whatsappMessage = encodeURIComponent(messageText);
-    const whatsappNumber = '916369233305';
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${whatsappMessage}`;
-    window.open(whatsappUrl, '_blank');
+/* ===== Homepage booking bar ===== */
+const bookingBar = document.querySelector('[data-booking-bar]');
+if (bookingBar) {
+  const room = bookingBar.querySelector('[data-booking-room]');
+  const checkIn = bookingBar.querySelector('[data-booking-in]');
+  const checkOut = bookingBar.querySelector('[data-booking-out]');
+  const guests = bookingBar.querySelector('[data-booking-guests]');
+  const submit = bookingBar.querySelector('[data-booking-submit]');
+  linkDateInputs(checkIn, checkOut);
+
+  submit?.addEventListener('click', () => {
+    if (checkIn.value && checkOut.value && checkOut.value <= checkIn.value) {
+      showFormNote(bookingBar.querySelector('.booking-bar-inner'), 'Check-out must be after check-in.', true);
+      return;
+    }
+    const nights = nightsBetween(checkIn.value, checkOut.value);
+    const stay = checkIn.value && checkOut.value
+      ? `from ${prettyDate(checkIn.value)} to ${prettyDate(checkOut.value)} (${nights} night${nights === 1 ? '' : 's'})`
+      : checkIn.value ? `from ${prettyDate(checkIn.value)}` : '';
+    const roomText = room.value || 'a room';
+    openWhatsApp(`Hello Mandarin Orchid team.\n\nI would like to check availability for ${roomText}${stay ? ` ${stay}` : ''}${guests.value ? ` for ${guests.value.toLowerCase()}` : ''}.\n\nPlease let me know availability and your best rates. Thank you!`);
+    saveEnquiry({
+      source: 'booking', room: room.value, checkIn: checkIn.value, checkOut: checkOut.value, guests: guests.value,
+      website: bookingBar.querySelector('[name="website"]')?.value || '',
+    });
+    bookingBar.querySelector('.enquiry-note-msg')?.remove();
   });
 }
 

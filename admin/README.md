@@ -49,6 +49,18 @@ There is no visible admin link on the public site. Go to `/admin` directly, type
 - Exports: a branded **PDF report** for accounting, an **invoices CSV** and a **line items CSV** (opens in Excel or Google Sheets).
 - Invoices now store their items, villa, subtotal and tax for reporting. Invoices created before this are counted in totals as "Not itemised".
 
+## Guest enquiries
+
+- The **contact form** and the homepage **booking bar** (stay, dates, guests) save each request to the dashboard's **Enquiries** page, then open WhatsApp pre-filled so the guest can continue the conversation. WhatsApp opens immediately; the enquiry is sent in the background, so pop-up blockers never interfere.
+- Each enquiry shows the dates and nights, room, guests and message, with one-tap **Call**, **WhatsApp** and **Email**. Mark it New, Contacted, Booked or Closed, and keep a private note. New enquiries show as a badge in the sidebar (and on the Enquiries tab on phones).
+- Spam protection matches reviews (hidden field, minimum fill time, same-site only, per-visitor and unread limits). IP addresses are not stored.
+
+## Website build
+
+- `npm run build` adds fingerprints to stylesheet/script links, link-preview tags (WhatsApp, Facebook, X) to every page from its title and description, a `sitemap.xml`, and copies `robots.txt` (search engines skip `/admin` and `/api`).
+- Only images that are used are published: all of `images/optimized/` plus any original referenced by a page, style, script, the API or the dashboard. Unused originals stay in the repository. Quality is unchanged; files are copied as-is.
+- `images/og-cover.jpg` is the 1200×630 image shown when the site is shared.
+
 ## Guest reviews
 
 - **Public page:** `mandarinorchid.in/reviews` (also `/review` and `/feedback`) shows the average rating, a star breakdown and all published reviews, with a form for guests to write their own. Linked from every page's footer and mobile menu, and from the homepage "Guest Voices" carousel.

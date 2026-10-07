@@ -723,6 +723,40 @@ tbody tr.editing { background: var(--gold-soft); }
 .review-queue-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .review-queue-actions .icon-button { margin-left: auto; }
 
+/* ===== Enquiries ===== */
+.enquiry-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.enquiry { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 12px; background: var(--surface); animation: rise .45s var(--ease-out) both; transition: opacity .2s, border-color .2s; }
+.enquiry.status-new { border-left-color: var(--danger); }
+.enquiry.status-contacted { border-left-color: var(--gold); }
+.enquiry.status-booked { border-left-color: var(--success); }
+.enquiry.busy { opacity: .6; }
+.enquiry-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.enquiry-name { display: block; font-family: var(--serif); font-size: 22px; font-weight: 500; line-height: 1.2; }
+.source-tag { display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 999px; color: var(--gold-ink); background: var(--gold-soft); font-size: 10px; font-weight: 600; }
+.source-tag.booking { color: var(--muted); background: var(--surface-2); }
+.enquiry-facts { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--ink-2); font-size: 12.5px; }
+.enquiry-facts span { display: inline-flex; align-items: center; gap: 7px; }
+.enquiry-facts .icon { color: var(--gold-ink); }
+.enquiry-message { margin: 0; padding: 12px 14px; border-radius: 10px; color: var(--ink); background: var(--surface-2); font-size: 13px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.enquiry-contact { display: flex; flex-wrap: wrap; gap: 8px; }
+.enquiry-contact .chip-button { text-decoration: none; }
+.enquiry-contact .whatsapp { color: #1d7a45; border-color: #bfe3cc; background: #eef9f1; }
+.enquiry-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.enquiry-note textarea { width: 100%; min-height: 40px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink); font: inherit; font-size: 12.5px; resize: vertical; }
+.enquiry-note textarea:focus { outline: none; border-style: solid; border-color: var(--gold); box-shadow: 0 0 0 4px var(--gold-glow); }
+.nav-badge.dot { min-width: 9px; width: 9px; height: 9px; padding: 0; }
+
+@media (min-width: 861px) { .more-sheet-backdrop { display: none; } }
+/* Phone "More" sheet */
+.more-sheet-backdrop { position: fixed; inset: 0; z-index: 39; background: rgba(13, 11, 8, .3); animation: fade-in .2s var(--ease); }
+.more-sheet {
+  position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-lg); animation: toast-in .3s var(--ease-out);
+}
+.more-sheet button, .more-sheet a { position: relative; display: grid; justify-items: center; gap: 6px; padding: 14px 6px; border: 0; border-radius: 12px; color: var(--ink-2); background: transparent; font-size: 11px; text-decoration: none; }
+.more-sheet .selected { color: var(--gold-ink); background: var(--gold-soft); }
+.more-sheet .nav-badge { position: absolute; top: 8px; right: 18%; }
+
 /* ===== Modal & toasts ===== */
 .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(13, 11, 8, .55); backdrop-filter: blur(6px); animation: fade-in .25s var(--ease); }
 .modal { width: min(100%, 420px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-lg); animation: modal-in .4s var(--ease-out); }
@@ -835,7 +869,7 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .panel { padding: 18px 16px; }
   .panel-heading h2 { font-size: 23px; }
   .bottom-nav {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(7, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr);
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line);
     background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: saturate(1.4) blur(16px);
   }

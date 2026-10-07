@@ -7,6 +7,7 @@ import { Gate, GateMode } from './Gate';
 import { Login } from './Login';
 import { MenuPage } from './MenuPage';
 import { Overview } from './Overview';
+import { EnquiriesPage } from './EnquiriesPage';
 import { Reports } from './Reports';
 import { ReviewsPage } from './ReviewsPage';
 import { Tabs } from './Tabs';
@@ -18,12 +19,15 @@ const views: { id: View; label: string; title: string; subtitle: string; icon: s
   { id: 'overview', label: 'Overview', title: 'Dashboard', subtitle: 'Revenue, photos and website at a glance', icon: 'overview' },
   { id: 'tabs', label: 'Tabs', title: 'Guest tabs', subtitle: 'Add orders for each villa and bill them at checkout', icon: 'clipboard' },
   { id: 'billing', label: 'Billing', title: 'Billing & invoices', subtitle: 'Create branded invoices and track history', icon: 'billing' },
+  { id: 'enquiries', label: 'Enquiries', title: 'Guest enquiries', subtitle: 'Booking requests from the website', icon: 'mail' },
   { id: 'menu', label: 'Menu', title: 'Food & beverages menu', subtitle: 'Prices and items used for orders and bills', icon: 'utensils' },
   { id: 'reports', label: 'Reports', title: 'Reports & exports', subtitle: 'Revenue, best sellers and accounting exports', icon: 'chart' },
   { id: 'reviews', label: 'Reviews', title: 'Guest reviews', subtitle: 'Approve reviews and share the review link', icon: 'star' },
   { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
 ];
 const idleLimitMs = 30 * 60 * 1000;
+/** Sections in the phone tab bar; the rest open from "More". */
+const primaryMobileViews: View[] = ['overview', 'tabs', 'billing', 'enquiries'];
 /** While someone is actively using the dashboard, renew the session once it has under 25 minutes left. */
 const renewBelowSeconds = 25 * 60;
 const recentActivityMs = 2 * 60 * 1000;
@@ -60,6 +64,9 @@ export function App() {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [draft, setDraft] = useState<InvoiceDraft | null>(null);
   const [pendingReviews, setPendingReviews] = useState(0);
+  const [newEnquiries, setNewEnquiries] = useState(0);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const badgeFor = (id: View) => id === 'reviews' ? pendingReviews : id === 'enquiries' ? newEnquiries : 0;
   const lastActivity = useRef(Date.now());
   const toastId = useRef(0);
 
@@ -134,6 +141,9 @@ export function App() {
     refresh()
       .catch(error => notify(error instanceof Error ? error.message : 'Could not load admin data.', true))
       .finally(() => setDataLoading(false));
+    api<{ enquiries: { status: string }[] }>('/api/admin/enquiries')
+      .then(list => setNewEnquiries(list.enquiries.filter(enquiry => enquiry.status === 'new').length))
+      .catch(() => {});
     api<{ reviews: { status: string }[] }>('/api/admin/reviews')
       .then(list => setPendingReviews(list.reviews.filter(review => review.status === 'pending').length))
       .catch(() => {});
@@ -235,7 +245,7 @@ export function App() {
             <button key={item.id} type="button" className={view === item.id ? 'nav-item selected' : 'nav-item'}
               aria-current={view === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
               <Icon name={item.icon} size={18} /><span>{item.label}</span>
-              {item.id === 'reviews' && pendingReviews > 0 && <span className="nav-badge" aria-label={`${pendingReviews} waiting`}>{pendingReviews}</span>}
+              {badgeFor(item.id) > 0 && <span className="nav-badge" aria-label={`${badgeFor(item.id)} waiting`}>{badgeFor(item.id)}</span>}
             </button>
           ))}
           <p className="nav-heading">WEBSITE</p>
@@ -276,20 +286,39 @@ export function App() {
           {view === 'billing' && <Billing invoices={invoices} loading={dataLoading} refresh={refresh} notify={notify}
             menu={menu} draft={draft} onDraftUsed={() => setDraft(null)} />}
           {view === 'menu' && <MenuPage menu={menu} onSaved={setMenu} notify={notify} />}
+          {view === 'enquiries' && <EnquiriesPage notify={notify} onNewChange={setNewEnquiries} />}
           {view === 'reports' && <Reports notify={notify} />}
           {view === 'reviews' && <ReviewsPage notify={notify} onPendingChange={setPendingReviews} />}
           {view === 'gallery' && <Gallery images={gallery} loading={dataLoading} refresh={refresh} notify={notify} />}
         </main>
       </div>
 
+      {/* Phones show the daily essentials; everything else sits under More. */}
       <nav className="bottom-nav" aria-label="Dashboard sections">
-        {views.map(item => (
-          <button key={item.id} type="button" className={view === item.id ? 'selected' : ''} aria-current={view === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>
+        {views.filter(item => primaryMobileViews.includes(item.id)).map(item => (
+          <button key={item.id} type="button" className={view === item.id ? 'selected' : ''} aria-current={view === item.id ? 'page' : undefined} onClick={() => { setMoreOpen(false); navigate(item.id); }}>
             <Icon name={item.icon} size={20} /><span>{item.label}</span>
-            {item.id === 'reviews' && pendingReviews > 0 && <span className="nav-badge" aria-hidden="true">{pendingReviews}</span>}
+            {badgeFor(item.id) > 0 && <span className="nav-badge" aria-hidden="true">{badgeFor(item.id)}</span>}
           </button>
         ))}
+        <button type="button" className={moreOpen || !primaryMobileViews.includes(view) ? 'selected' : ''} aria-expanded={moreOpen} onClick={() => setMoreOpen(open => !open)}>
+          <Icon name="more" size={20} /><span>More</span>
+          {views.some(item => !primaryMobileViews.includes(item.id) && badgeFor(item.id) > 0) && <span className="nav-badge dot" aria-hidden="true" />}
+        </button>
       </nav>
+      {moreOpen && (
+        <div className="more-sheet-backdrop" onClick={() => setMoreOpen(false)}>
+          <div className="more-sheet" role="menu" aria-label="More sections" onClick={event => event.stopPropagation()}>
+            {views.filter(item => !primaryMobileViews.includes(item.id)).map(item => (
+              <button key={item.id} type="button" role="menuitem" className={view === item.id ? 'selected' : ''} onClick={() => { setMoreOpen(false); navigate(item.id); }}>
+                <Icon name={item.icon} size={20} /><span>{item.label}</span>
+                {badgeFor(item.id) > 0 && <span className="nav-badge">{badgeFor(item.id)}</span>}
+              </button>
+            ))}
+            <a role="menuitem" href="/" target="_blank" rel="noopener"><Icon name="globe" size={20} /><span>View website</span></a>
+          </div>
+        </div>
+      )}
 
       {gateOverlay}
       <Toasts toasts={toasts} dismiss={id => setToasts(current => current.filter(toast => toast.id !== id))} />
