@@ -2438,6 +2438,7 @@ body.mobile-menu-open { overflow: hidden; }
 .reviews-summary { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 1fr); gap: 60px; align-items: end; margin-bottom: 70px; padding-bottom: 60px; border-bottom: 1px solid var(--light-grey); }
 .reviews-score .section-title { margin-bottom: 28px; }
 .reviews-score-row { display: flex; align-items: center; gap: 20px; margin-bottom: 34px; }
+.reviews-average[hidden] { display: none; }
 .reviews-average { font-family: var(--font-serif); font-size: 72px; font-weight: 300; line-height: 1; color: var(--charcoal); }
 .reviews-count { margin-top: 6px; font-size: 11px; letter-spacing: 1px; color: var(--warm-grey); }
 .review-stars { display: inline-flex; gap: 3px; }

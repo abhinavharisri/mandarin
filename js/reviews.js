@@ -75,9 +75,12 @@
   moreButton?.addEventListener('click', showMore);
 
   const renderSummary = summary => {
-    el('[data-reviews-average]').textContent = summary.count ? summary.average.toFixed(1) : '–';
+    // Until the first review is published, show only the "No reviews yet" line.
+    const average = el('[data-reviews-average]');
+    average.textContent = summary.count ? summary.average.toFixed(1) : '';
+    average.hidden = !summary.count;
     const starsSlot = el('[data-reviews-stars]');
-    starsSlot.replaceChildren(stars(summary.average || 0, 18));
+    starsSlot.replaceChildren(...(summary.count ? [stars(summary.average, 18)] : []));
     el('[data-reviews-count]').textContent = summary.count
       ? `From ${summary.count} guest review${summary.count === 1 ? '' : 's'}`
       : 'No reviews yet';

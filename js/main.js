@@ -231,7 +231,8 @@ if (testimonialSection) {
     }
     const text = document.createElement('p');
     text.className = 'testimonial-text';
-    const body = review.text.length > 300 ? `${review.text.slice(0, 297)}…` : review.text;
+    // Long reviews are shortened at the end of a word.
+    const body = review.text.length > 300 ? `${review.text.slice(0, 297).replace(/\s+\S*$/, '')}…` : review.text;
     text.textContent = `“${body}”`;
     border.append(rating, text);
     const author = document.createElement('p');
