@@ -3,22 +3,15 @@
    ============================================================ */
 
 /* ===== Page Loader =====
-   The full logo animation plays on the first page of a visit; later pages get a quick
-   version. The loader lifts as soon as the main photo is ready (not after every image
-   and script has downloaded) and never stays longer than a few seconds on slow
+   The full logo animation plays on every page, as originally designed (about 2.6 s).
+   It no longer waits for every image and script to download: it lifts once the main
+   photo is ready and the animation has played, and never stays longer than 6 s on slow
    connections. Hero text animations start when it lifts (body.is-ready). */
 const loader = document.querySelector('.page-loader');
 const markReady = () => document.body.classList.add('is-ready');
 if (loader) {
-  let seenThisVisit = false;
-  try {
-    seenThisVisit = sessionStorage.getItem('mo-visited') === '1';
-    sessionStorage.setItem('mo-visited', '1');
-  } catch { /* private browsing: always show the full animation */ }
-  if (seenThisVisit) loader.classList.add('quick');
-
-  const minimum = seenThisVisit ? 350 : 1500; // let the logo animation finish
-  const maximum = seenThisVisit ? 1200 : 3000; // never keep visitors waiting longer
+  const minimum = 2600; // let the logo, line and subtitle animation play in full
+  const maximum = 6000; // never keep visitors waiting longer than this
   let revealed = false;
   const reveal = () => {
     if (revealed) return;

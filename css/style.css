@@ -2661,15 +2661,9 @@ body.is-ready .hero-line > * { animation-play-state: running; }
 .booking-bar .enquiry-note-msg { margin: 0; text-align: center; }
 
 /* Safety net: if the page script never runs, the loader still lifts on its own. */
-.page-loader { animation: loaderSafety 0.6s ease 6s forwards; }
+.page-loader { animation: loaderSafety 0.6s ease 8s forwards; }
 .page-loader.hidden { animation: none; }
 @keyframes loaderSafety { to { opacity: 0; visibility: hidden; pointer-events: none; } }
-
-/* Quick loader for later pages in the same visit. */
-.page-loader.quick { transition-duration: 0.45s; }
-.page-loader.quick .loader-logo { animation-duration: 0.3s; animation-delay: 0s; }
-.page-loader.quick .loader-line { animation-duration: 0.35s; animation-delay: 0.05s; }
-.page-loader.quick .loader-sub { animation-duration: 0.3s; animation-delay: 0.1s; }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-slide.active .hero-slide-img img, .hero-dot.active::after { animation: none; }
