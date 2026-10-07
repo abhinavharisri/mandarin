@@ -56,4 +56,21 @@ export function sectionLabel(isoDate: string, meal: string) {
   return meal ? `${label} · ${meal}` : label;
 }
 
+/** Quotes a CSV cell and neutralises spreadsheet formula injection. */
+export const csvCell = (value: string | number | null) => {
+  const text = value === null ? '' : String(value);
+  return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
+};
+
+/** Saves rows as a CSV file that opens cleanly in Excel or Google Sheets. */
+export function downloadCsv(filename: string, rows: (string | number | null)[][]) {
+  const blob = new Blob(['\ufeff' + rows.map(row => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const optionLabel = (name: string, option: string) => option ? `${name} · ${option}` : name;

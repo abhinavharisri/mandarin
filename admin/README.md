@@ -42,6 +42,13 @@ There is no visible admin link on the public site. Go to `/admin` directly, type
 - **Check out & bill** turns a tab into a pre-filled invoice on the Billing page (repeat orders merged, grouped by day and meal). Generating the invoice closes the tab; it then appears under "Recently billed".
 - The Billing page also has **Add from menu** for invoices made without a tab.
 
+## Reports & exports
+
+- **Reports** covers any period (this month, last month, last 3 months, this year, or custom dates, using India dates): revenue, invoice count, average bill, tax collected, a daily or monthly trend, revenue split into Food & beverages / Room & stay / Activities & extras / Tax, revenue by villa, best-selling dishes and the invoice register.
+- Lines are classified by their menu category when they came from the menu; otherwise by wording ("rent", "villa night" → Room & stay; "campfire", "transfer" → Activities & extras; everything else → Food & beverages).
+- Exports: a branded **PDF report** for accounting, an **invoices CSV** and a **line items CSV** (opens in Excel or Google Sheets).
+- Invoices now store their items, villa, subtotal and tax for reporting. Invoices created before this are counted in totals as "Not itemised".
+
 ## Gallery and invoices
 
 - The existing gallery photos are included in the dashboard. Removing one hides it from the public gallery without deleting the original website image.

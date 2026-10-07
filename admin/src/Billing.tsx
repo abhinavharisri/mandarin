@@ -1,13 +1,13 @@
 import { DragEvent, FormEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, downloadFile } from './client';
-import { inr, optionLabel, shortDate } from './format';
+import { downloadCsv, inr, optionLabel, shortDate } from './format';
 import { InvoiceTable } from './InvoiceTable';
 import { MenuPicker } from './MenuPicker';
 import { InvoiceDraft, InvoiceSummary, Menu, Notify, PickedLine } from './types';
 import type { NotesImport } from './notes/parseNotes';
 import { Icon, Modal, Segmented, Spinner, stagger } from './ui';
 
-type LineItem = { description: string; quantity: string; unitPrice: string; section: string };
+type LineItem = { description: string; quantity: string; unitPrice: string; section: string; itemId?: string };
 type ImportSummary = { fileName: string; count: number; declaredTotal: number | null; skipped: string[] };
 type Period = 'all' | 'month' | '30d' | 'year';
 
@@ -28,12 +28,6 @@ function nightsBetween(start: string, end: string) {
   const nights = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000);
   return nights >= 0 ? nights : null;
 }
-
-/** Quotes a CSV cell and neutralises spreadsheet formula injection. */
-const csvCell = (value: string | number) => {
-  const text = String(value);
-  return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
-};
 
 export function Billing({ invoices, loading, refresh, notify, menu, draft, onDraftUsed }: {
   invoices: InvoiceSummary[]; loading: boolean; refresh: () => Promise<void>; notify: Notify;
@@ -74,7 +68,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     setStayEnd(draft.stayEnd);
     setStayLabel(draft.stayLabel);
     setLineItems(draft.lines.slice(0, maxLines).map(line => ({
-      description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section,
+      description: line.description, quantity: String(line.quantity), unitPrice: String(line.unitPrice), section: line.section, itemId: line.itemId,
     })));
     setImported(null);
     setSourceBill(null);
@@ -90,7 +84,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
         const description = optionLabel(pick.name, pick.option);
         const same = next.find(line => line.section === pickSection && line.description === description && Number(line.unitPrice) === pick.unitPrice);
         if (same) same.quantity = String(Number(same.quantity) + pick.quantity);
-        else next.push({ description, quantity: String(pick.quantity), unitPrice: String(pick.unitPrice), section: pickSection });
+        else next.push({ description, quantity: String(pick.quantity), unitPrice: String(pick.unitPrice), section: pickSection, itemId: pick.itemId || undefined });
       }
       return (next.length ? next : [emptyLine()]).slice(0, maxLines);
     });
@@ -204,6 +198,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     form.set('lineItems', JSON.stringify(lineItems.map(item => ({
       description: item.description, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice),
       ...(item.section.trim() ? { section: item.section.trim() } : {}),
+      ...(item.itemId ? { itemId: item.itemId } : {}),
     }))));
     if (sourceBill) form.set('sourceBill', sourceBill);
     setBusy(true);
@@ -219,19 +214,10 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     }
   };
 
-  const exportCsv = () => {
-    const rows = [
-      ['Invoice', 'Guest', 'Email', 'Date', 'Currency', 'Total'],
-      ...records.map(invoice => [invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', invoice.created_at.slice(0, 10), invoice.currency, Number(invoice.total_amount).toFixed(2)]),
-    ];
-    const blob = new Blob([rows.map(row => row.map(csvCell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mandarin-orchid-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+  const exportCsv = () => downloadCsv(`mandarin-orchid-invoices-${new Date().toISOString().slice(0, 10)}.csv`, [
+    ['Invoice', 'Guest', 'Email', 'Date', 'Currency', 'Total'],
+    ...records.map(invoice => [invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', invoice.created_at.slice(0, 10), invoice.currency, Number(invoice.total_amount).toFixed(2)]),
+  ]);
 
   return (
     <div className="view-stack">

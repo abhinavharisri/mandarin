@@ -6,7 +6,9 @@ import {
 import { adminConfig, Env, HttpError } from './env.js';
 import { json, jsonBody, noContent } from './http.js';
 import { buildInvoicePdf, calculateTotals, InvoiceLine } from './invoice.js';
-import { menuRoutes } from './menu.js';
+import { loadMenu, menuRoutes } from './menu.js';
+import { buildReportPdf } from './reportPdf.js';
+import { buildReport, InvoiceRecord } from './reports.js';
 import { listKeys, putJson, readJson, requireJson } from './storage.js';
 import { closeTab, tabRoutes } from './tabs.js';
 
@@ -24,17 +26,6 @@ type GalleryRecord = {
   created_at: string;
 };
 
-type InvoiceRecord = {
-  id: string;
-  invoice_number: string;
-  guest_name: string;
-  guest_email: string | null;
-  total_amount: number;
-  currency: 'INR';
-  created_at: string;
-  pdf_key: string;
-  source_bill_key: string | null;
-};
 
 const maxImageBytes = 8 * 1024 * 1024;
 const maxBillBytes = 10 * 1024 * 1024;
@@ -44,6 +35,7 @@ const lineSchema = z.array(z.object({
   quantity: z.number().int().min(1).max(9999),
   unitPrice: z.number().min(0).max(10_000_000),
   section: z.string().trim().max(60).optional(),
+  itemId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional(),
 })).min(1).max(150);
 
 const gallerySeeds = [
@@ -109,11 +101,22 @@ async function galleryRecords(bucket: R2Bucket | undefined) {
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
-async function invoiceRecords(bucket: R2Bucket) {
+async function allInvoiceRecords(bucket: R2Bucket) {
   const keys = (await listKeys(bucket, 'invoices/')).filter(key => key.endsWith('.json'));
   const invoices = await Promise.all(keys.map(key => readJson<InvoiceRecord>(bucket, key)));
   return invoices.filter((invoice): invoice is InvoiceRecord => Boolean(invoice))
-    .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200);
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+const invoiceRecords = async (bucket: R2Bucket) => (await allInvoiceRecords(bucket)).slice(0, 200);
+
+/** Validates ?from=yyyy-mm-dd&to=yyyy-mm-dd (at most five years). */
+function reportRange(url: URL) {
+  const range = z.object({ from: z.string().date(), to: z.string().date() })
+    .safeParse({ from: url.searchParams.get('from'), to: url.searchParams.get('to') });
+  if (!range.success || range.data.from > range.data.to) throw new HttpError(400, 'Choose a valid date range.');
+  if (Date.parse(range.data.to) - Date.parse(range.data.from) > 5 * 366 * 86_400_000) throw new HttpError(400, 'Reports can cover at most five years.');
+  return range.data;
 }
 
 async function logoBytes(env: Env, request: Request) {
@@ -257,7 +260,19 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
 
   if (path === '/api/admin/invoices' && method === 'GET') {
     const invoices = await invoiceRecords(bucket);
-    return json(invoices.map(({ pdf_key: _pdf, source_bill_key: _source, ...invoice }) => invoice));
+    return json(invoices.map(({ pdf_key: _pdf, source_bill_key: _source, line_items: _lines, ...invoice }) => invoice));
+  }
+
+  if (path === '/api/admin/reports' && method === 'GET') {
+    const { from, to } = reportRange(url);
+    const [invoices, menu] = await Promise.all([allInvoiceRecords(bucket), loadMenu(bucket)]);
+    return json(buildReport(invoices, menu, from, to));
+  }
+
+  if (path === '/api/admin/reports/pdf' && method === 'GET') {
+    const { from, to } = reportRange(url);
+    const [invoices, menu, logo] = await Promise.all([allInvoiceRecords(bucket), loadMenu(bucket), logoBytes(env, request)]);
+    return pdfResponse(await buildReportPdf(buildReport(invoices, menu, from, to), logo), `mandarin-orchid-report-${from}-to-${to}.pdf`);
   }
 
   if (segments[1] === 'invoices' && segments.length === 4 && segments[3] === 'download' && method === 'GET') {
@@ -359,6 +374,14 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
         created_at: createdAt.toISOString(),
         pdf_key: pdfKey,
         source_bill_key: sourceBillKey,
+        stay_label: input.data.stayLabel || null,
+        subtotal: totals.subtotal,
+        tax_amount: totals.taxAmount,
+        tax_rate: input.data.taxRate,
+        line_items: lineItems.map(({ description, quantity, unitPrice, section, itemId }) => ({
+          description, quantity, unitPrice, ...(section ? { section } : {}), ...(itemId ? { itemId } : {}),
+        })),
+        tab_id: input.data.tabId || null,
       };
       await putJson(bucket, `invoices/${id}.json`, record);
     } catch (error) {

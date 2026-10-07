@@ -1,6 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
 
-export type InvoiceLine = { description: string; quantity: number; unitPrice: number; section?: string };
+export type InvoiceLine = { description: string; quantity: number; unitPrice: number; section?: string; itemId?: string };
 export type InvoiceData = {
   invoiceNumber: string;
   issueDate: Date;
@@ -43,7 +43,7 @@ export function pdfSafe(text: string) {
   }).join('');
 }
 
-const money = (amount: number) => `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const money = (amount: number) => `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const date = (value: Date) => value.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
 
 type TextOptions = { font: PDFFont; size: number; color?: ReturnType<typeof rgb>; width?: number; align?: 'left' | 'right' | 'center'; spacing?: number };

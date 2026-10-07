@@ -1,4 +1,4 @@
-export type View = 'overview' | 'tabs' | 'billing' | 'menu' | 'gallery';
+export type View = 'overview' | 'tabs' | 'billing' | 'menu' | 'reports' | 'gallery';
 export type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
 export type GalleryImage = {
@@ -76,5 +76,17 @@ export type InvoiceDraft = {
   stayStart: string;
   stayEnd: string;
   stayLabel: string;
-  lines: { description: string; quantity: number; unitPrice: number; section: string }[];
+  lines: { description: string; quantity: number; unitPrice: number; section: string; itemId?: string }[];
+};
+
+export type Report = {
+  from: string;
+  to: string;
+  granularity: 'day' | 'month';
+  totals: { revenue: number; invoices: number; average: number; tax: number; food: number; room: number; extras: number; unitemised: number; unitemisedInvoices: number };
+  trend: { key: string; label: string; total: number; count: number }[];
+  byStay: { label: string; total: number; count: number }[];
+  topItems: { name: string; quantity: number; revenue: number }[];
+  register: { id: string; invoice_number: string; date: string; guest_name: string; stay_label: string; subtotal: number | null; tax: number | null; total: number }[];
+  lines: { invoice_number: string; date: string; stay_label: string; section: string; category: string; description: string; quantity: number; unit_price: number; amount: number }[];
 };

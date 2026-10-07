@@ -28,7 +28,7 @@ export function draftFromTab(tab: Tab): InvoiceDraft {
       const description = optionLabel(order.name, order.option);
       const same = lines.find(line => line.section === group.section && line.description === description && line.unitPrice === order.unit_price);
       if (same) same.quantity += order.quantity;
-      else lines.push({ description, quantity: order.quantity, unitPrice: order.unit_price, section: group.section });
+      else lines.push({ description, quantity: order.quantity, unitPrice: order.unit_price, section: group.section, itemId: order.item_id || undefined });
     }
   }
   return {

@@ -7,6 +7,7 @@ import { Gate, GateMode } from './Gate';
 import { Login } from './Login';
 import { MenuPage } from './MenuPage';
 import { Overview } from './Overview';
+import { Reports } from './Reports';
 import { Tabs } from './Tabs';
 import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Session, View } from './types';
 import { Icon, Toast, Toasts } from './ui';
@@ -17,6 +18,7 @@ const views: { id: View; label: string; title: string; subtitle: string; icon: s
   { id: 'tabs', label: 'Tabs', title: 'Guest tabs', subtitle: 'Add orders for each villa and bill them at checkout', icon: 'clipboard' },
   { id: 'billing', label: 'Billing', title: 'Billing & invoices', subtitle: 'Create branded invoices and track history', icon: 'billing' },
   { id: 'menu', label: 'Menu', title: 'Food & beverages menu', subtitle: 'Prices and items used for orders and bills', icon: 'utensils' },
+  { id: 'reports', label: 'Reports', title: 'Reports & exports', subtitle: 'Revenue, best sellers and accounting exports', icon: 'chart' },
   { id: 'gallery', label: 'Gallery', title: 'Photo gallery', subtitle: 'Publish and curate photos on the website', icon: 'gallery' },
 ];
 const idleLimitMs = 30 * 60 * 1000;
@@ -265,6 +267,7 @@ export function App() {
           {view === 'billing' && <Billing invoices={invoices} loading={dataLoading} refresh={refresh} notify={notify}
             menu={menu} draft={draft} onDraftUsed={() => setDraft(null)} />}
           {view === 'menu' && <MenuPage menu={menu} onSaved={setMenu} notify={notify} />}
+          {view === 'reports' && <Reports notify={notify} />}
           {view === 'gallery' && <Gallery images={gallery} loading={dataLoading} refresh={refresh} notify={notify} />}
         </main>
       </div>

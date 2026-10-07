@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { inr, inrCompact, monthKey } from './format';
 import { categories, GalleryImage, InvoiceSummary } from './types';
 
-type MonthBucket = { key: string; label: string; fullLabel: string; total: number; count: number };
+export type TrendBucket = { key: string; label: string; fullLabel: string; total: number; count: number };
+type MonthBucket = TrendBucket;
 
 export function monthlyRevenue(invoices: InvoiceSummary[], months: number, now = new Date()): MonthBucket[] {
   const buckets: MonthBucket[] = [];
@@ -36,25 +37,31 @@ function niceMax(value: number) {
 
 export function RevenueChart({ invoices, months }: { invoices: InvoiceSummary[]; months: number }) {
   const buckets = useMemo(() => monthlyRevenue(invoices, months), [invoices, months]);
+  return <TrendChart buckets={buckets} label={`Invoiced revenue for the last ${months} months`} />;
+}
+
+/** Single-series revenue bars with hover / focus tooltips. Long ranges label every nth bar. */
+export function TrendChart({ buckets, label }: { buckets: TrendBucket[]; label: string }) {
   const [active, setActive] = useState<number | null>(null);
+  const labelEvery = Math.max(1, Math.ceil(buckets.length / 12));
   const max = niceMax(Math.max(...buckets.map(bucket => bucket.total)));
   const ticks = [max, max / 2, 0];
   const empty = buckets.every(bucket => bucket.total === 0);
 
   return (
-    <figure className="bar-chart" aria-label={`Invoiced revenue for the last ${months} months`}>
+    <figure className="bar-chart" aria-label={label}>
       <div className="bar-chart-plot">
         <div className="bar-chart-grid" aria-hidden="true">
           {ticks.map(tick => <div key={tick} className="grid-line"><span>{inrCompact(tick)}</span></div>)}
         </div>
-        <div className="bar-chart-bars" style={{ gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))` }} key={months}>
+        <div className="bar-chart-bars" style={{ gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))` }} key={buckets.map(bucket => bucket.key).join()}>
           {buckets.map((bucket, index) => (
             <div key={bucket.key} className={active === index ? 'bar-column active' : 'bar-column'}
               tabIndex={0} role="img"
               aria-label={`${bucket.fullLabel}: ${inr(bucket.total)} from ${bucket.count} invoice${bucket.count === 1 ? '' : 's'}`}
               onMouseEnter={() => setActive(index)} onMouseLeave={() => setActive(null)}
               onFocus={() => setActive(index)} onBlur={() => setActive(null)}>
-              <div className="bar" style={{ height: `${(bucket.total / max) * 100}%`, animationDelay: `${index * 45}ms` }} />
+              <div className="bar" style={{ height: `${(bucket.total / max) * 100}%`, animationDelay: `${Math.min(index, 30) * 30}ms` }} />
               {active === index && (
                 <div className={index === buckets.length - 1 ? 'chart-tooltip left' : index === 0 ? 'chart-tooltip right' : 'chart-tooltip'}
                   style={{ bottom: `calc(${Math.min(62, (bucket.total / max) * 100)}% + 10px)` }} aria-hidden="true">
@@ -66,10 +73,12 @@ export function RevenueChart({ invoices, months }: { invoices: InvoiceSummary[];
             </div>
           ))}
         </div>
-        {empty && <p className="chart-empty">Revenue appears here once invoices are created.</p>}
+        {empty && <p className="chart-empty">No invoices in this period.</p>}
       </div>
       <div className="bar-chart-labels" style={{ gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))` }} aria-hidden="true">
-        {buckets.map((bucket, index) => <span key={bucket.key} className={active === index ? 'active' : ''}>{bucket.label}</span>)}
+        {buckets.map((bucket, index) => (
+          <span key={bucket.key} className={active === index ? 'active' : ''}>{index % labelEvery === 0 || active === index ? bucket.label : ''}</span>
+        ))}
       </div>
     </figure>
   );
