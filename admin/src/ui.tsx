@@ -83,7 +83,8 @@ export function CountUp({ value, format = (n: number) => Math.round(n).toLocaleS
   return <>{format(useCountUp(value))}</>;
 }
 
-export type Toast = { id: number; text: string; isError: boolean };
+export type ToastAction = { label: string; run: () => void };
+export type Toast = { id: number; text: string; isError: boolean; action?: ToastAction };
 
 export function Toasts({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
   return (
@@ -92,6 +93,9 @@ export function Toasts({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: num
         <div key={toast.id} className={toast.isError ? 'toast error' : 'toast'} role={toast.isError ? 'alert' : 'status'}>
           <span className="toast-icon"><Icon name={toast.isError ? 'alert' : 'check'} size={16} /></span>
           <p>{toast.text}</p>
+          {toast.action && (
+            <button type="button" className="toast-action" onClick={() => { toast.action!.run(); dismiss(toast.id); }}>{toast.action.label}</button>
+          )}
           <button type="button" className="icon-button" onClick={() => dismiss(toast.id)} aria-label="Dismiss notification"><Icon name="close" size={14} /></button>
         </div>
       ))}

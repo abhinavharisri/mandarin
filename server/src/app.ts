@@ -11,6 +11,7 @@ import { buildReportPdf } from './reportPdf.js';
 import { buildReport, InvoiceRecord } from './reports.js';
 import { listKeys, putJson, readJson, requireJson } from './storage.js';
 import { closeTab, tabRoutes } from './tabs.js';
+import { moveToTrash, purgeExpired, trashRoutes } from './trash.js';
 
 type Category = 'rooms' | 'common' | 'exteriors' | 'landscapes';
 
@@ -284,21 +285,31 @@ async function route(request: Request, env: Env, renewal: Headers): Promise<Resp
     return pdfResponse(pdf.body, `${invoice.invoice_number}.pdf`);
   }
 
-  // Deleting a billing record requires the admin password again, not just a valid session.
-  if (segments[1] === 'invoices' && segments.length === 3 && method === 'DELETE') {
-    const id = z.string().uuid().safeParse(segments[2]);
+  /** Destructive actions need the admin password again, not just a valid session. */
+  const confirmPassword = async (failure: string) => {
     const input = z.object({ password: z.string().min(1).max(256) }).safeParse(await jsonBody(request));
-    if (!id.success || !input.success) throw new HttpError(400, 'Enter the admin password to confirm.');
+    if (!input.success) throw new HttpError(400, 'Enter the admin password to confirm.');
     assertNotThrottled(request);
     // 403 rather than 401: a wrong confirmation password must not end the session.
     if (!passwordMatches(input.data.password, config)) {
       recordAttempt(request, false);
-      throw new HttpError(403, 'The password is incorrect. The invoice was not removed.');
+      throw new HttpError(403, failure);
     }
-    const metadataKey = `invoices/${id.data}.json`;
-    const invoice = await requireJson<InvoiceRecord>(bucket, metadataKey, 'Invoice was not found.');
-    await bucket.delete([metadataKey, invoice.pdf_key, ...(invoice.source_bill_key ? [invoice.source_bill_key] : [])]);
+  };
+
+  // Deleting moves the invoice to Recently deleted, where it can be restored for 30 days.
+  if (segments[1] === 'invoices' && segments.length === 3 && method === 'DELETE') {
+    const id = z.string().uuid().safeParse(segments[2]);
+    if (!id.success) throw new HttpError(400, 'Invalid invoice.');
+    await confirmPassword('The password is incorrect. The invoice was not removed.');
+    await moveToTrash(bucket, id.data);
+    await purgeExpired(bucket).catch(error => console.error('Could not clear expired deleted invoices', error));
     return noContent();
+  }
+
+  if (segments[1] === 'trash') {
+    const response = await trashRoutes(request, bucket, segments, confirmPassword);
+    if (response) return response;
   }
 
   if (path === '/api/admin/invoices' && method === 'POST') return saveInvoice(request, env, bucket, null);

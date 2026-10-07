@@ -32,7 +32,8 @@ export function draftFromTab(tab: Tab): InvoiceDraft {
     }
   }
   return {
-    tabId: tab.id,
+    // A tab that was already billed is only copied; there is nothing left to close.
+    tabId: tab.status === 'open' ? tab.id : '',
     guestName: tab.guest_name,
     guestEmail: tab.guest_email,
     stayStart: tab.check_in,
@@ -127,6 +128,15 @@ export function Tabs({ menu, notify, onCheckout }: { menu: Menu | null; notify: 
     }
   };
 
+  /** Rebuilds a bill from a tab that was already billed, e.g. if its invoice was deleted. */
+  const billAgain = async (summary: TabSummary) => {
+    try {
+      onCheckout(draftFromTab(await api<Tab>(`/api/admin/tabs/${summary.id}`)));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not open this tab.', true);
+    }
+  };
+
   const groups = tab ? bySection(tab.orders) : [];
   const tabTotal = groups.reduce((sum, group) => sum + group.total, 0);
 
@@ -166,6 +176,7 @@ export function Tabs({ menu, notify, onCheckout }: { menu: Menu | null; notify: 
                 <li key={summary.id}>
                   <span><b>{summary.label}</b> · {summary.guest_name || 'Guest'}<small>{summary.invoice_number} · {summary.closed_at ? shortDate(summary.closed_at) : ''}</small></span>
                   <strong>{inr(summary.total)}</strong>
+                  <button type="button" className="chip-button" onClick={() => billAgain(summary)} title="Create a new bill from this tab's orders"><Icon name="receipt" size={13} />Bill again</button>
                 </li>
               ))}
             </ul>

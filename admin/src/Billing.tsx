@@ -3,6 +3,7 @@ import { api, downloadFile } from './client';
 import { dayLabel, downloadCsv, inr, optionLabel, quantityLabel, shortDate, toggleHalf } from './format';
 import { InvoiceTable } from './InvoiceTable';
 import { MenuPicker } from './MenuPicker';
+import { RecentlyDeleted } from './RecentlyDeleted';
 import { InvoiceDetail, InvoiceDraft, InvoiceSummary, Menu, Notify, PickedLine } from './types';
 import type { NotesImport } from './notes/parseNotes';
 import { Icon, Modal, Segmented, Spinner, stagger } from './ui';
@@ -80,6 +81,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
   const [query, setQuery] = useState('');
   const [period, setPeriod] = useState<Period>('all');
   const [pendingDelete, setPendingDelete] = useState<InvoiceSummary | null>(null);
+  const [binVersion, setBinVersion] = useState(0);
 
   const totals = totalsFor(lineItems, Number(taxRate));
   const nights = nightsBetween(stayStart, stayEnd);
@@ -129,9 +131,11 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     })));
     setImported(null);
     setSourceBill(null);
-    setTabId(draft.tabId);
+    setTabId(draft.tabId || null);
     onDraftUsed();
-    notify(`Bill prepared from ${draft.stayLabel}'s tab. Add room charges if needed, then generate.`);
+    notify(draft.tabId
+      ? `Bill prepared from ${draft.stayLabel}'s tab. Add room charges if needed, then generate.`
+      : `New bill prepared from ${draft.stayLabel}'s earlier tab. Review it, then generate.`);
   }, [draft, onDraftUsed, notify]);
 
   const addFromMenu = (picked: PickedLine[]) => {
@@ -532,6 +536,8 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
           emptyText={invoices.length ? 'No invoices match this search.' : undefined} />
       </section>
 
+      <RecentlyDeleted version={binVersion} onRestored={refresh} notify={notify} />
+
       {confirmingStay && stayStart && stayEnd && (
         <Modal title="Check the stay dates" onClose={() => setConfirmingStay(false)}>
           <div className="confirm">
@@ -565,7 +571,20 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
           onDeleted={async () => {
             const removed = pendingDelete;
             setPendingDelete(null);
-            notify(`Invoice ${removed.invoice_number} was removed.`);
+            if (editing?.id === removed.id) resetForm();
+            setBinVersion(version => version + 1);
+            notify(`Invoice ${removed.invoice_number} moved to Recently deleted.`, false, {
+              label: 'Undo',
+              run: () => {
+                api(`/api/admin/trash/${removed.id}/restore`, { method: 'POST' })
+                  .then(async () => {
+                    await refresh();
+                    setBinVersion(version => version + 1);
+                    notify(`Invoice ${removed.invoice_number} was restored.`);
+                  })
+                  .catch(error => notify(error instanceof Error ? error.message : 'Could not restore the invoice.', true));
+              },
+            });
             await refresh().catch(() => {});
           }} />
       )}
@@ -599,13 +618,13 @@ function DeleteInvoiceDialog({ invoice, onCancel, onDeleted }: {
     <Modal title="Remove invoice" onClose={busy ? () => {} : onCancel}>
       <form className="confirm" onSubmit={confirm}>
         <span className="confirm-icon"><Icon name="lock" size={22} /></span>
-        <h2>Remove this invoice?</h2>
+        <h2>Delete this invoice?</h2>
         <div className="delete-summary">
           <b>{invoice.guest_name}</b>
           <span>{invoice.invoice_number} · {shortDate(invoice.created_at)}</span>
           <strong>{inr(Number(invoice.total_amount))}</strong>
         </div>
-        <p className="muted">The PDF and its record will be permanently deleted. Enter the admin password to confirm.</p>
+        <p className="muted">It moves to <b>Recently deleted</b> and leaves the invoice history and reports. You can restore it with the same number for 30 days. Enter the admin password to confirm.</p>
         <label className="confirm-field">
           <span className="visually-hidden">Admin password</span>
           <div className="password-field">
@@ -619,7 +638,7 @@ function DeleteInvoiceDialog({ invoice, onCancel, onDeleted }: {
         <div className="modal-actions">
           <button type="button" className="ghost-button" onClick={onCancel} disabled={busy}>Keep invoice</button>
           <button className="danger-button" disabled={busy || !password}>
-            {busy ? <><Spinner /> Removing…</> : <><Icon name="trash" size={14} />Remove permanently</>}
+            {busy ? <><Spinner /> Deleting…</> : <><Icon name="trash" size={14} />Move to Recently deleted</>}
           </button>
         </div>
       </form>

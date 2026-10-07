@@ -9,7 +9,7 @@ import { MenuPage } from './MenuPage';
 import { Overview } from './Overview';
 import { Reports } from './Reports';
 import { Tabs } from './Tabs';
-import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Session, View } from './types';
+import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Notify, Session, View } from './types';
 import { Icon, Toast, Toasts } from './ui';
 import logoUrl from './logo.png';
 
@@ -60,10 +60,11 @@ export function App() {
   const lastActivity = useRef(Date.now());
   const toastId = useRef(0);
 
-  const notify = useCallback((text: string, isError = false) => {
+  const notify = useCallback<Notify>((text, isError = false, action) => {
     const id = ++toastId.current;
-    setToasts(current => [...current.slice(-3), { id, text, isError }]);
-    window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), isError ? 7000 : 4200);
+    setToasts(current => [...current.slice(-3), { id, text, isError, action }]);
+    // Toasts with an action (like Undo) stay longer so there is time to use it.
+    window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), action ? 10_000 : isError ? 7000 : 4200);
   }, []);
 
   const lock = useCallback((message: string) => {

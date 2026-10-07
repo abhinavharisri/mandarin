@@ -672,6 +672,27 @@ tbody tr.editing { background: var(--gold-soft); }
 .order-group li .half-button { width: 30px; height: 30px; font-size: 13px; }
 .picker-cart li .half-button { width: 30px; height: 30px; font-size: 13px; }
 
+/* ===== Recently deleted ===== */
+.bin-help { margin: -12px 0 14px; }
+.bin-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.bin-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); animation: rise .4s var(--ease-out) both; transition: opacity .2s; }
+.bin-list li.busy { opacity: .55; }
+.bin-main { display: grid; gap: 3px; min-width: 0; }
+.bin-main b { overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.bin-main small { color: var(--muted); font-size: 10.5px; }
+.bin-total { font-size: 13px; font-variant-numeric: tabular-nums; }
+.bin-days { padding: 3px 9px; border-radius: 999px; color: var(--muted); background: var(--surface-2); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.bin-days.soon { color: var(--danger); background: var(--danger-soft); }
+.bin-actions { display: flex; align-items: center; gap: 4px; }
+.danger-text { color: var(--danger); }
+.danger-text:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.empty-state.compact { padding: 14px; }
+.toast-action { flex: none; align-self: center; padding: 6px 12px; border: 1px solid var(--gold); border-radius: 999px; background: var(--gold-soft); color: var(--gold-ink); font-size: 11.5px; font-weight: 700; }
+.toast-action:hover { background: var(--gold); color: #fff; }
+.closed-tabs li { flex-wrap: wrap; }
+.closed-tabs li > span { flex: 1; min-width: 0; }
+.closed-tabs .chip-button { min-height: 28px; padding: 0 10px; font-size: 10.5px; }
+
 /* ===== Modal & toasts ===== */
 .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(13, 11, 8, .55); backdrop-filter: blur(6px); animation: fade-in .25s var(--ease); }
 .modal { width: min(100%, 420px); max-height: calc(100vh - 40px); overflow: auto; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow-lg); animation: modal-in .4s var(--ease-out); }
@@ -829,6 +850,9 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .line-item input { padding: 0 8px; font-size: 12.5px; }
   .bar-chart-labels span { font-size: 9px; }
   .auth-card h1 { font-size: 38px; }
+  .bin-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .bin-days { justify-self: start; }
+  .bin-actions { justify-self: end; }
   .export-actions { width: 100%; }
   .export-actions > * { flex: 1 1 auto; }
   .date-range { width: 100%; }

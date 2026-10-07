@@ -37,7 +37,8 @@ export type InvoiceDetail = InvoiceSummary & {
   revision?: number;
   has_source_bill?: boolean;
 };
-export type Notify = (text: string, isError?: boolean) => void;
+/** Shows a toast; `action` adds a button such as Undo. */
+export type Notify = (text: string, isError?: boolean, action?: { label: string; run: () => void }) => void;
 
 export const categories: { id: Category; label: string }[] = [
   { id: 'rooms', label: 'Rooms' },
