@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './client';
 import { shortDate } from './format';
 import { Notify } from './types';
-import { ConfirmDialog, Icon, Segmented, stagger } from './ui';
+import { ConfirmDialog, Icon, Segmented, Spinner, stagger } from './ui';
 
 type Status = 'pending' | 'approved' | 'hidden';
 type Review = { id: string; name: string; rating: number; text: string; stay: string; visited: string; status: Status; featured: boolean; created_at: string };
@@ -158,12 +158,15 @@ export function ReviewsPage({ notify, onPendingChange }: { notify: Notify; onPen
 
 function ShareCard({ notify, average, count }: { notify: Notify; average: number; count: number }) {
   const link = reviewLink();
-  const [qr, setQr] = useState('');
+  const [card, setCard] = useState('');
+  const [busy, setBusy] = useState(false);
 
+  // Live preview of the printable review card.
   useEffect(() => {
     let cancelled = false;
-    import('qrcode').then(QRCode => QRCode.toString(link, { type: 'svg', margin: 1, color: { dark: '#1a1814', light: '#ffffff' } }))
-      .then(svg => { if (!cancelled) setQr(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`); })
+    import('./reviewCard')
+      .then(({ drawReviewCard }) => drawReviewCard(link))
+      .then(canvas => { if (!cancelled) setCard(canvas.toDataURL('image/jpeg', 0.85)); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [link]);
@@ -177,13 +180,34 @@ function ShareCard({ notify, average, count }: { notify: Notify; average: number
     }
   };
 
-  const downloadQr = async () => {
-    const QRCode = await import('qrcode');
-    const url = await QRCode.toDataURL(link, { width: 1200, margin: 2, color: { dark: '#1a1814', light: '#ffffff' } });
+  const save = (href: string, filename: string) => {
     const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'mandarin-orchid-review-qr.png';
+    anchor.href = href;
+    anchor.download = filename;
     anchor.click();
+  };
+
+  const downloadCard = async () => {
+    setBusy(true);
+    try {
+      const { drawReviewCard } = await import('./reviewCard');
+      const canvas = await drawReviewCard(link);
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('The card could not be created.');
+      const url = URL.createObjectURL(blob);
+      save(url, 'mandarin-orchid-review-card.png');
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify('Review card downloaded. It prints at A5; it also works on a phone screen or tablet stand.');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not create the review card.', true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadPlainQr = async () => {
+    const QRCode = await import('qrcode');
+    save(await QRCode.toDataURL(link, { width: 1200, margin: 2, color: { dark: '#1a1814', light: '#ffffff' } }), 'mandarin-orchid-review-qr.png');
   };
 
   const message = `Thank you for staying at Mandarin Orchid Resort! We would love to hear about your stay. Please leave a short review here: ${link}`;
@@ -193,21 +217,24 @@ function ShareCard({ notify, average, count }: { notify: Notify; average: number
       <div className="share-copy">
         <p className="eyebrow">COLLECT REVIEWS</p>
         <h2>Share the review link</h2>
-        <p className="muted">Send this to guests after checkout, or print the QR code for reception. New reviews wait here for your approval before they appear on the website.</p>
+        <p className="muted">Send this to guests after checkout, or print the review card for reception and the villas. Every invoice PDF also carries this QR code. New reviews wait here for your approval before they appear on the website.</p>
         <div className="share-link">
           <code>{link}</code>
           <button type="button" className="primary-button small" onClick={copy}><Icon name="clipboard" size={14} />Copy link</button>
         </div>
         <div className="share-actions">
+          <button type="button" className="primary-button small" onClick={downloadCard} disabled={busy}>
+            {busy ? <><Spinner /> Preparing…</> : <><Icon name="download" size={14} />Download review card</>}
+          </button>
           <a className="ghost-button" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener"><Icon name="external" size={14} />Share on WhatsApp</a>
-          <button type="button" className="ghost-button" onClick={downloadQr}><Icon name="download" size={14} />Download QR code</button>
+          <button type="button" className="text-button" onClick={downloadPlainQr}>Plain QR only</button>
         </div>
         {count > 0 && <p className="share-score"><span>{average.toFixed(1)}</span> average from {count} published review{count === 1 ? '' : 's'}</p>}
       </div>
-      <div className="share-qr">
-        {qr ? <img src={qr} alt={`QR code linking to ${link}`} /> : <span className="skeleton" />}
-        <small>Scan to write a review</small>
-      </div>
+      <button type="button" className="share-preview" onClick={downloadCard} disabled={busy} aria-label="Download the review card">
+        {card ? <img src={card} alt="Preview of the printable review card" /> : <span className="skeleton" />}
+        <small>Print-ready card · A5</small>
+      </button>
     </section>
   );
 }

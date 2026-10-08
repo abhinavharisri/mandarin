@@ -65,7 +65,8 @@ There is no visible admin link on the public site. Go to `/admin` directly, type
 
 - **Public page:** `mandarinorchid.in/reviews` (also `/review` and `/feedback`) shows the average rating, a star breakdown and all published reviews, with a form for guests to write their own. Linked from every page's footer and mobile menu, and from the homepage "Guest Voices" carousel.
 - **Moderation:** new reviews wait in the dashboard's **Reviews** page (with a count badge in the sidebar) until approved. Reviews can be published, hidden, featured (pinned to the top of the page and the carousel) or deleted.
-- **Sharing:** the Reviews page has the link with **Copy link**, **Share on WhatsApp** (pre-written message) and a **QR code** that downloads as a print-quality PNG for reception.
+- **Sharing:** the Reviews page has the link with **Copy link**, **Share on WhatsApp** (pre-written message) and **Download review card**: a print-ready A5 card (1748×2480 px, 300 dpi) in the resort's style with the QR code, logo and hills photo, previewed live. **Plain QR only** is still available.
+- **Invoices:** every new or edited invoice PDF carries a "Loved your stay?" card with the review QR code beside the totals.
 - **Homepage carousel:** shows published reviews first, then Google reviews rated 4★ and above, falling back to the reviews written into the page. Review text is always inserted as plain text.
 - **Spam protection:** a hidden field bots fill in, a minimum time to fill the form, same-site requests only, 3 reviews per visitor per hour and at most 300 waiting reviews. Visitors' IP addresses are not stored. Only the name, rating, review and optional stay details are kept.
 

@@ -700,13 +700,17 @@ tbody tr.editing { background: var(--gold-soft); }
 .nav-item > .nav-badge { flex: none; margin-left: auto; }
 .bottom-nav button { position: relative; }
 .bottom-nav .nav-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; font-size: 9px; }
-.share-card { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 28px; align-items: center; }
+.share-card { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 28px; align-items: center; }
 .share-copy h2 { margin: 0 0 8px; font-size: 28px; }
 .share-link { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 12px; padding: 8px 8px 8px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); }
 .share-link code { flex: 1; min-width: 0; overflow: hidden; color: var(--ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .share-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .share-score { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 0; color: var(--muted); font-size: 12px; }
 .share-score span { color: var(--gold-ink); font-family: var(--serif); font-size: 30px; font-variant-numeric: lining-nums; }
+.share-preview { display: grid; justify-items: center; gap: 8px; padding: 0; border: 0; background: none; cursor: pointer; }
+.share-preview img, .share-preview .skeleton { width: 210px; aspect-ratio: 1748 / 2480; height: auto; border-radius: 10px; box-shadow: var(--shadow-md); transition: transform .35s var(--ease-out), box-shadow .35s; }
+.share-preview:hover img { transform: translateY(-4px) rotate(-1deg); box-shadow: var(--shadow-lg); }
+.share-preview small { color: var(--muted); font-size: 10.5px; letter-spacing: .5px; }
 .share-qr { display: grid; justify-items: center; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
 .share-qr img, .share-qr .skeleton { width: 170px; height: 170px; }
 .share-qr small { color: #6b6560; font-size: 10.5px; letter-spacing: .5px; }
@@ -915,7 +919,7 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .bar-chart-labels span { font-size: 9px; }
   .auth-card h1 { font-size: 38px; }
   .share-card { grid-template-columns: 1fr; }
-  .share-qr { justify-self: center; }
+  .share-qr, .share-preview { justify-self: center; }
   .bottom-nav button span:not(.nav-badge) { font-size: 8.5px; }
   .bin-list li { grid-template-columns: minmax(0, 1fr) auto; }
   .bin-days { justify-self: start; }

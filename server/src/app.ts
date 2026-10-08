@@ -415,6 +415,7 @@ async function saveInvoice(request: Request, env: Env, bucket: R2Bucket, existin
     advancePaid,
     lineItems,
     logoPng: await logoBytes(env, request),
+    reviewUrl: new URL('/reviews', request.url).toString(),
   });
 
   const saved: string[] = [];

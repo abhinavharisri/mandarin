@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib';
+import { qrMatrix } from './qr.js';
 
 export type InvoiceLine = { description: string; quantity: number; unitPrice: number; section?: string; itemId?: string };
 export type InvoiceData = {
@@ -18,6 +19,8 @@ export type InvoiceData = {
   lineItems: InvoiceLine[];
   /** PNG bytes for the resort logo; the header is drawn without it when absent. */
   logoPng?: Uint8Array;
+  /** Public reviews page; when set, the bill invites the guest to scan and leave a review. */
+  reviewUrl?: string;
 };
 
 export function calculateTotals(items: InvoiceLine[], taxRate: number) {
@@ -188,6 +191,32 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
     box(page, 342, totalsY + 116, 201, 34, charcoal);
     text(page, 'BALANCE PAYABLE', 354, totalsY + 128, { font: bold, size: 10, color: white });
     text(page, money(Math.round((totals.total - advance) * 100) / 100), 430, totalsY + 128, { font: bold, size: 10, color: white, width: 101, align: 'right' });
+  }
+
+  if (data.reviewUrl) {
+    // "Loved your stay?" card beside the totals (which always fit on this page).
+    const cardTop = totalsY - 4;
+    const cardWidth = 262;
+    const cardHeight = 92;
+    box(page, 52, cardTop, cardWidth, cardHeight, goldPale);
+    page.drawRectangle({ x: 52, y: height - cardTop - cardHeight, width: cardWidth, height: cardHeight, borderColor: gold, borderWidth: 0.6 });
+    const qr = qrMatrix(data.reviewUrl);
+    const qrSize = 72;
+    const quiet = 4;
+    const cell = qrSize / qr.size;
+    const qrLeft = 62;
+    const qrTop = cardTop + (cardHeight - qrSize) / 2;
+    box(page, qrLeft - quiet, qrTop - quiet, qrSize + quiet * 2, qrSize + quiet * 2, white);
+    for (let row = 0; row < qr.size; row++) {
+      for (let column = 0; column < qr.size; column++) {
+        if (qr.isDark(row, column)) box(page, qrLeft + column * cell, qrTop + row * cell, cell + 0.02, cell + 0.02, charcoal);
+      }
+    }
+    const textLeft = qrLeft + qrSize + 18;
+    text(page, 'LOVED YOUR STAY?', textLeft, cardTop + 18, { font: bold, size: 7.5, color: hex('#8B6B14'), spacing: 1.4 });
+    text(page, 'Share your experience', textLeft, cardTop + 32, { font: serif, size: 13 });
+    text(page, 'Scan the code to leave a review.', textLeft, cardTop + 52, { font: regular, size: 8, color: warmGrey });
+    text(page, data.reviewUrl.replace(/^https?:\/\//, ''), textLeft, cardTop + 66, { font: bold, size: 7.5, color: hex('#8B6B14') });
   }
 
   line(page, 52, 752, 543, gold, 0.75);
