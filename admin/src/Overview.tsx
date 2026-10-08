@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { CategoryBars, monthlyRevenue, RevenueChart } from './charts';
-import { greeting, inrRounded, shortDate } from './format';
+import { formatDate, greeting, inrRounded, shortDate } from './format';
 import { api } from './client';
 import { InvoiceTable } from './InvoiceTable';
 import { GalleryImage, InvoiceSummary, TabSummary, View } from './types';
@@ -39,7 +39,7 @@ export function Overview({ gallery, invoices, loading, onNavigate }: {
       <section className="hero-card stagger" style={stagger(0)}>
         <img src="/images/optimized/craftedwithsoul-1600.webp" alt="" aria-hidden="true" />
         <div className="hero-copy">
-          <p className="eyebrow light">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}</p>
+          <p className="eyebrow light">{`${new Date().toLocaleDateString('en-IN', { weekday: 'long', timeZone: 'Asia/Kolkata' }).toUpperCase()} · ${formatDate(new Date())}`}</p>
           <h2>{greeting()}, welcome back.</h2>
           <p>Here's how Mandarin Orchid is doing at a glance.</p>
           <div className="hero-actions">

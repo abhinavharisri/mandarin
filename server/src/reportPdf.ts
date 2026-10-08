@@ -15,9 +15,10 @@ const width = 595.28;
 const height = 841.89;
 const margin = 52;
 
+/** dd/mm/yyyy from a yyyy-mm-dd date. */
 const longDate = (iso: string) => {
-  const [year, month, day] = iso.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const [year, month, day] = iso.split('-');
+  return `${day}/${month}/${year}`;
 };
 const percent = (part: number, whole: number) => whole ? `${Math.round((part / whole) * 100)}%` : '-';
 
@@ -103,7 +104,7 @@ export async function buildReportPdf(report: Report, logoPng?: Uint8Array): Prom
   }
   text('REVENUE REPORT', 300, 44, serif, 22, charcoal, 243, 'right');
   text(`${longDate(report.from)} - ${longDate(report.to)}`, 300, 72, regular, 9, warmGrey, 243, 'right');
-  text(`Generated ${longDate(new Date().toISOString().slice(0, 10))}`, 300, 86, regular, 8, warmGrey, 243, 'right');
+  text(`Generated ${longDate(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date()))}`, 300, 86, regular, 8, warmGrey, 243, 'right');
   hr(116, gold, 1);
   y = 132;
 

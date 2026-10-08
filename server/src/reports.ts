@@ -92,7 +92,8 @@ export function buildReport(all: InvoiceRecord[], menu: Menu, from: string, to: 
   while (cursor <= end && trend.size < 400) {
     const key = granularity === 'day' ? cursor.toISOString().slice(0, 10) : cursor.toISOString().slice(0, 7);
     if (!trend.has(key)) {
-      const label = granularity === 'day' ? `${cursor.getUTCDate()} ${months[cursor.getUTCMonth()]}` : `${months[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`;
+      // Days as dd/mm (short enough for the chart axis); months keep their names.
+      const label = granularity === 'day' ? `${String(cursor.getUTCDate()).padStart(2, '0')}/${String(cursor.getUTCMonth() + 1).padStart(2, '0')}` : `${months[cursor.getUTCMonth()]} ${cursor.getUTCFullYear()}`;
       trend.set(key, { key, label, total: 0, count: 0 });
     }
     if (granularity === 'day') cursor.setUTCDate(cursor.getUTCDate() + 1);

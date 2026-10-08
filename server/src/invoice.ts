@@ -48,12 +48,11 @@ export function pdfSafe(text: string) {
 }
 
 export const money = (amount: number) => `Rs. ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** Unambiguous dates such as "2 Oct 2026" (numeric dates read differently in India and the US). */
+/** dd/mm/yyyy in India time — the date format used across the website and dashboard. */
 export function date(value: Date) {
   const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' })
-    .format(value).split('-').map(Number);
-  return `${day} ${monthNames[month - 1]} ${year}`;
+    .format(value).split('-');
+  return `${day}/${month}/${year}`;
 }
 
 /** 1.5 → "1½", 0.5 → "½". */
@@ -115,7 +114,7 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   }
   text(page, 'INVOICE', 340, 48, { font: serif, size: 28, width: 203, align: 'right' });
   text(page, 'MANDARIN ORCHID RESORT', 340, 82, { font: regular, size: 9, color: warmGrey, width: 203, align: 'right' });
-  if (data.revisedAt) text(page, `REVISED ${date(data.revisedAt).toUpperCase()}`, 340, 98, { font: bold, size: 7.5, color: gold, width: 203, align: 'right', spacing: 1 });
+  if (data.revisedAt) text(page, `REVISED ${date(data.revisedAt)}`, 340, 98, { font: bold, size: 7.5, color: gold, width: 203, align: 'right', spacing: 1 });
 
   line(page, 52, 128, 543, gold, 1);
   text(page, 'INVOICE DETAILS', 52, 148, { font: bold, size: 8, color: gold, spacing: 1.5 });

@@ -32,7 +32,6 @@ export type NotesImport = {
   skipped: string[];
 };
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const mealWords = /^(early\s+)?(breakfast|brunch|lunch|dinner|supper|snacks?|evening\s+snacks?|high\s+tea|beverages?|drinks?|bar|extras?|others?|misc(ellaneous)?|activities|food|room\s+service)$/i;
 const roomLine = /^(villa|room|cottage|suite|block|unit|house|tent)\b[\s\w#-]{0,20}$/i;
 const dateOnly = /^(\d{1,2})\s*[/.-]\s*(\d{1,2})(?:\s*[/.-]\s*(\d{2,4}))?$/;
@@ -168,7 +167,7 @@ export function parseNotes(rawLines: string[], reference = new Date()): NotesImp
     const dateLine = line.match(dateOnly);
     if (dateLine) {
       const iso = toIso(datePieces(dateLine));
-      day = iso ? `${Number(iso.slice(8, 10))} ${months[Number(iso.slice(5, 7)) - 1]}` : line;
+      day = iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : line;
       meal = '';
       afterTotal = false;
       continue;

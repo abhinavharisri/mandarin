@@ -13,8 +13,33 @@ export function inrCompact(amount: number) {
 
 const trim = (value: number) => value.toFixed(1).replace(/\.0$/, '');
 
-export const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+const pad = (value: number) => String(value).padStart(2, '0');
+
+/**
+ * dd/mm/yyyy — the one date format used across the website and dashboard.
+ * Plain dates (yyyy-mm-dd) are shown as written; timestamps are converted to India time first.
+ */
+export function formatDate(value: string | Date) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(typeof value === 'string' ? new Date(value) : value).split('-');
+  return `${day}/${month}/${year}`;
+}
+
+/** dd/mm/yyyy, hh:mm in India time, e.g. for "received at" tooltips. */
+export function formatDateTime(value: string | Date) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const time = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+  return `${formatDate(date)}, ${time}`;
+}
+
+/** File names cannot contain "/", so exports use dd-mm-yyyy. */
+export const fileDate = (value: string | Date) => formatDate(value).replaceAll('/', '-');
+
+export const shortDate = (iso: string) => formatDate(iso);
 
 export function greeting(date = new Date()) {
   const hour = date.getHours();
@@ -48,11 +73,9 @@ export function mealForHour(hour: number): Meal {
   return 'Dinner';
 }
 
-/** Bill section label, e.g. "2 Oct · Dinner" (matches the staff notes import). */
+/** Bill section label, e.g. "02/10/2026 · Dinner" (matches the staff notes import). */
 export function sectionLabel(isoDate: string, meal: string) {
-  const [, month, day] = isoDate.split('-').map(Number);
-  // Fixed month names so labels match the notes import on every browser ("Sep", never "Sept").
-  const label = `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1]}`;
+  const label = formatDate(isoDate);
   return meal ? `${label} · ${meal}` : label;
 }
 
@@ -81,11 +104,7 @@ export const quantityLabel = (quantity: number) =>
 export const toggleHalf = (quantity: number) =>
   Number.isInteger(quantity) ? quantity + 0.5 : Math.max(0.5, quantity - 0.5);
 
-const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** "2 Oct 2026" from yyyy-mm-dd, never ambiguous between day and month. */
-export function dayLabel(isoDate: string, withYear = true) {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  return withYear ? `${day} ${monthShort[month - 1]} ${year}` : `${day} ${monthShort[month - 1]}`;
-}
+/** A stay date such as check-in, as dd/mm/yyyy. */
+export const dayLabel = (isoDate: string) => formatDate(isoDate);
 
 export const optionLabel = (name: string, option: string) => option ? `${name} · ${option}` : name;

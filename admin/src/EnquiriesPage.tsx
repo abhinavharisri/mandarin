@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './client';
-import { dayLabel, shortDate } from './format';
+import { dayLabel, formatDateTime, shortDate } from './format';
 import { Notify } from './types';
 import { ConfirmDialog, Icon, Segmented, stagger } from './ui';
 
@@ -31,7 +31,7 @@ function stayText(enquiry: Enquiry) {
   if (!enquiry.check_in && !enquiry.check_out) return '';
   if (enquiry.check_in && enquiry.check_out) {
     const nights = Math.round((Date.parse(enquiry.check_out) - Date.parse(enquiry.check_in)) / 86_400_000);
-    return `${dayLabel(enquiry.check_in, false)} → ${dayLabel(enquiry.check_out)} · ${nights} night${nights === 1 ? '' : 's'}`;
+    return `${dayLabel(enquiry.check_in)} → ${dayLabel(enquiry.check_out)} · ${nights} night${nights === 1 ? '' : 's'}`;
   }
   return enquiry.check_in ? `From ${dayLabel(enquiry.check_in)}` : `Until ${dayLabel(enquiry.check_out)}`;
 }
@@ -147,7 +147,7 @@ export function EnquiriesPage({ notify, onNewChange }: { notify: Notify; onNewCh
                       <b className="enquiry-name">{enquiry.name || 'Website visitor'}</b>
                       <span className={`source-tag ${enquiry.source}`}>{enquiry.source === 'contact' ? 'Contact form' : 'Booking bar · continued on WhatsApp'}</span>
                     </div>
-                    <span className="muted small" title={new Date(enquiry.created_at).toLocaleString('en-IN')}>{ago(enquiry.created_at)}</span>
+                    <span className="muted small" title={formatDateTime(enquiry.created_at)}>{ago(enquiry.created_at)}</span>
                   </div>
 
                   <div className="enquiry-facts">

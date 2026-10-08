@@ -381,11 +381,11 @@ if (fineDiningCarouselImgs.length > 0) {
    in the background with keepalive so it arrives even if the visitor switches apps. */
 const pageOpenedAt = Date.now();
 const resortWhatsApp = '916369233305';
-const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** dd/mm/yyyy, the date format used across the site. */
 const prettyDate = iso => {
   if (!iso) return '';
-  const [year, month, day] = iso.split('-').map(Number);
-  return `${day} ${monthShort[month - 1]} ${year}`;
+  const [year, month, day] = iso.split('-');
+  return `${day}/${month}/${year}`;
 };
 const nightsBetween = (from, to) => (from && to ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) : 0);
 const todayIso = () => {

@@ -23,7 +23,7 @@ test('splits names, quantities and sections like a person would', () => {
   const find = (source: string) => lines.find(line => line.source === source)!;
   assert.deepEqual(
     (({ section, description, quantity, unitPrice }) => ({ section, description, quantity, unitPrice }))(find('Idly 30. -750')),
-    { section: '2 Oct · Breakfast', description: 'Idli', quantity: 30, unitPrice: 25 },
+    { section: '02/10/2026 · Breakfast', description: 'Idli', quantity: 30, unitPrice: 25 },
   );
   assert.equal(find("Dosai 20'-1200").description, 'Dosa');
   assert.deepEqual([find('Coffee4 -200').quantity, find('Coffee4 -200').unitPrice], [4, 50]);
@@ -33,7 +33,7 @@ test('splits names, quantities and sections like a person would', () => {
   assert.deepEqual([find('Panner 65 3 plates - 750').description, find('Panner 65 3 plates - 750').quantity], ['Paneer 65', 3]);
   assert.deepEqual([find('Gopi 65. 5. - 975').description, find('Gopi 65. 5. - 975').quantity], ['Gobi 65', 5]);
   assert.deepEqual([find('Chicken biriyani - 380').description, find('Chicken biriyani - 380').quantity], ['Chicken Biryani', 1]);
-  assert.equal(find('Chapathi6. - 180').section, '3 Oct');
+  assert.equal(find('Chapathi6. - 180').section, '03/10/2026');
   assert.deepEqual([find('Campfire 2 days- 4000').description, find('Campfire 2 days- 4000').section, find('Campfire 2 days- 4000').unitPrice], ['Campfire (per day)', 'Stay & extras', 2000]);
   assert.equal(find('Balance rent. - 35000').description, 'Balance Rent');
 });
@@ -43,9 +43,9 @@ test('handles other common note styles and reports unreadable lines', () => {
   assert.equal(result.stayLabel, 'Room 4');
   assert.equal(result.stayEnd, '2027-01-02');
   assert.deepEqual(result.lines.map(line => [line.section, line.description, line.quantity, line.unitPrice]), [
-    ['30 Dec · Lunch', 'Meals', 4, 300],
-    ['30 Dec · Lunch', 'Water Bottle', 2, 30],
-    ['30 Dec · Lunch', 'Fish 65', 1, 450],
+    ['30/12/2026 · Lunch', 'Meals', 4, 300],
+    ['30/12/2026 · Lunch', 'Water Bottle', 2, 30],
+    ['30/12/2026 · Lunch', 'Fish 65', 1, 450],
   ]);
   assert.deepEqual(result.skipped, ['see manager']);
   assert.equal(result.declaredTotal, 1710);
@@ -55,7 +55,7 @@ test('reads month-first dates when that is what the note means', () => {
   const result = parseNotes(['Villa 3 plus 1 room', 'Check in 10/2', 'Check out 10/5', '10/2', 'Breakfast', 'Dosai 4 - 240'], new Date('2026-10-06T12:00:00Z'));
   assert.equal(result.stayStart, '2026-10-02');
   assert.equal(result.stayEnd, '2026-10-05');
-  assert.equal(result.lines[0].section, '2 Oct · Breakfast');
+  assert.equal(result.lines[0].section, '02/10/2026 · Breakfast');
   // A date that can only be day-first settles the order for the whole note.
   const dayFirst = parseNotes(['Check in 10/2', 'Check out 25/2', 'Tea 1 - 30'], new Date('2026-10-06T12:00:00Z'));
   assert.equal(dayFirst.stayStart, '2026-02-10');

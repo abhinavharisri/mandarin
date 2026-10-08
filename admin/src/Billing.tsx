@@ -1,6 +1,6 @@
 import { DragEvent, FormEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, downloadFile } from './client';
-import { dayLabel, downloadCsv, inr, optionLabel, quantityLabel, shortDate, toggleHalf } from './format';
+import { dayLabel, downloadCsv, fileDate, inr, optionLabel, quantityLabel, shortDate, toggleHalf } from './format';
 import { InvoiceTable } from './InvoiceTable';
 import { MenuPicker } from './MenuPicker';
 import { RecentlyDeleted } from './RecentlyDeleted';
@@ -322,10 +322,10 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
     }
   };
 
-  const exportCsv = () => downloadCsv(`mandarin-orchid-invoices-${new Date().toISOString().slice(0, 10)}.csv`, [
+  const exportCsv = () => downloadCsv(`mandarin-orchid-invoices-${fileDate(new Date())}.csv`, [
     ['Invoice', 'Guest', 'Email', 'Date', 'Villa / room', 'Currency', 'Total', 'Advance paid', 'Balance due'],
     ...records.map(invoice => [
-      invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', invoice.created_at.slice(0, 10), invoice.stay_label || '', invoice.currency,
+      invoice.invoice_number, invoice.guest_name, invoice.guest_email || '', shortDate(invoice.created_at), invoice.stay_label || '', invoice.currency,
       Number(invoice.total_amount).toFixed(2), (invoice.advance_paid || 0).toFixed(2), (invoice.balance_due ?? Number(invoice.total_amount)).toFixed(2),
     ]),
   ]);
@@ -488,7 +488,7 @@ export function Billing({ invoices, loading, refresh, notify, menu, draft, onDra
           </p>
           {stayStart && stayEnd && nights !== null && (
             <p className={longStay ? 'summary-check warn' : 'summary-dates'}>
-              {longStay && <Icon name="alert" size={13} />}{dayLabel(stayStart, false)} → {dayLabel(stayEnd)}{longStay && ' · check the dates'}
+              {longStay && <Icon name="alert" size={13} />}{dayLabel(stayStart)} → {dayLabel(stayEnd)}{longStay && ' · check the dates'}
             </p>
           )}
           {imported?.declaredTotal != null && (

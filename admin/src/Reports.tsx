@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TrendChart } from './charts';
 import { api, downloadFile } from './client';
-import { downloadCsv, inr, inrRounded, resortNow, shortDate } from './format';
+import { downloadCsv, fileDate, formatDate, inr, inrRounded, resortNow } from './format';
 import { Notify, Report } from './types';
 import { CountUp, Icon, Segmented, Spinner, stagger } from './ui';
 
@@ -34,7 +34,7 @@ function presetRange(preset: Exclude<Preset, 'custom'>) {
   return { from: `${year}-01-01`, to: `${year}-12-31` };
 }
 
-const longDate = (value: string) => shortDate(`${value}T12:00:00Z`);
+const longDate = (value: string) => formatDate(value);
 
 export function Reports({ notify }: { notify: Notify }) {
   const [preset, setPreset] = useState<Preset>('this-month');
@@ -62,7 +62,7 @@ export function Reports({ notify }: { notify: Notify }) {
     fullLabel: report?.granularity === 'day' ? longDate(entry.key) : entry.label,
   })), [report]);
 
-  const fileStem = `mandarin-orchid-${range.from}-to-${range.to}`;
+  const fileStem = `mandarin-orchid-${fileDate(range.from)}-to-${fileDate(range.to)}`;
 
   const exportPdf = async () => {
     setExporting(true);
@@ -77,12 +77,12 @@ export function Reports({ notify }: { notify: Notify }) {
 
   const exportInvoices = () => report && downloadCsv(`${fileStem}-invoices.csv`, [
     ['Date', 'Invoice', 'Guest', 'Villa / room', 'Subtotal', 'Tax', 'Total', 'Advance paid', 'Balance due'],
-    ...report.register.map(row => [row.date, row.invoice_number, row.guest_name, row.stay_label, row.subtotal?.toFixed(2) ?? '', row.tax?.toFixed(2) ?? '', row.total.toFixed(2), row.advance.toFixed(2), row.balance.toFixed(2)]),
+    ...report.register.map(row => [formatDate(row.date), row.invoice_number, row.guest_name, row.stay_label, row.subtotal?.toFixed(2) ?? '', row.tax?.toFixed(2) ?? '', row.total.toFixed(2), row.advance.toFixed(2), row.balance.toFixed(2)]),
   ]);
 
   const exportLines = () => report && downloadCsv(`${fileStem}-line-items.csv`, [
     ['Date', 'Invoice', 'Villa / room', 'Section', 'Category', 'Item', 'Quantity', 'Rate', 'Amount'],
-    ...report.lines.map(line => [line.date, line.invoice_number, line.stay_label, line.section, line.category, line.description, line.quantity, line.unit_price.toFixed(2), line.amount.toFixed(2)]),
+    ...report.lines.map(line => [formatDate(line.date), line.invoice_number, line.stay_label, line.section, line.category, line.description, line.quantity, line.unit_price.toFixed(2), line.amount.toFixed(2)]),
   ]);
 
   const totals = report?.totals;
