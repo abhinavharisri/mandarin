@@ -1728,6 +1728,25 @@ body:has(button:hover) .cursor-outer {
   transition: color var(--t-fast);
 }
 .footer-legal a:hover { color: var(--gold); }
+.footer-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 1px;
+  transition: color var(--t-fast);
+}
+.footer-credit svg {
+  width: 16px;
+  height: 16px;
+  color: rgba(255,255,255,0.55);
+  flex: none;
+}
+.footer-credit span { color: rgba(255,255,255,0.55); }
+.footer-credit:hover,
+.footer-credit:hover span,
+.footer-credit:hover svg { color: var(--white); }
 
 /* ===== WhatsApp FAB ===== */
 .whatsapp-fab {
