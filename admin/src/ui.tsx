@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
+import { CSSProperties, ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 /** Sets the entrance-animation order for elements with the `stagger` class. */
@@ -85,6 +85,22 @@ export function useCountUp(value: number, durationMs = 1100) {
 
 export function CountUp({ value, format = (n: number) => Math.round(n).toLocaleString('en-IN') }: { value: number; format?: (n: number) => string }) {
   return <>{format(useCountUp(value))}</>;
+}
+
+/** Studio credit linking to hundrd.studio, with its dot-grid mark. */
+export function BuiltBy({ className = '' }: { className?: string }) {
+  const pattern = `hd-px-${useId().replace(/:/g, '')}`;
+  return (
+    <a className={`built-by ${className}`.trim()} href="https://hundrd.studio/" target="_blank" rel="noopener">
+      Built by
+      <svg viewBox="0 0 96 96" aria-hidden="true">
+        <defs><pattern id={pattern} width="10" height="10" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="currentColor" /></pattern></defs>
+        <rect width="96" height="96" fill={`url(#${pattern})`} />
+        <rect x="90" y="90" width="6" height="6" fill="#FF4A1C" />
+      </svg>
+      <span>hundrd studio</span>
+    </a>
+  );
 }
 
 export type ToastAction = { label: string; run: () => void };

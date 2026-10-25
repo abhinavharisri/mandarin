@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent, useState } from 'react';
 import { api } from './client';
 import { Session } from './types';
-import { Icon, Spinner } from './ui';
+import { BuiltBy, Icon, Spinner } from './ui';
 import logoUrl from './logo.png';
 
 export function Login({ onSignedIn, message }: { onSignedIn: (session: Session) => void; message?: string }) {
@@ -68,6 +68,7 @@ export function Login({ onSignedIn, message }: { onSignedIn: (session: Session) 
             <li><Icon name="lock" size={14} /> Locks after 30 min idle</li>
           </ul>
         </div>
+        <BuiltBy className="auth-credit" />
       </section>
     </main>
   );

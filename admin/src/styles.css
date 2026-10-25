@@ -942,3 +942,14 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
   .menu-prices { flex: 1; padding-left: 44px; }
   table.compact th:nth-child(2), table.compact td:nth-child(2) { display: none; }
 }
+
+/* Studio credit */
+.built-by { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); font-size: 10.5px; letter-spacing: .5px; text-decoration: none; opacity: .75; transition: opacity .2s, color .2s; }
+.built-by svg { width: 13px; height: 13px; flex: none; }
+.built-by span { color: var(--ink-2); font-weight: 500; }
+.built-by:hover { opacity: 1; color: var(--ink-2); }
+.auth-credit { position: absolute; bottom: 22px; left: 0; right: 0; width: fit-content; margin: 0 auto; white-space: nowrap; }
+.gate-credit { position: absolute; bottom: 28px; left: 0; right: 0; width: fit-content; margin: 0 auto; white-space: nowrap; animation: rise .7s .4s var(--ease-out) both; }
+.sidebar-credit { padding-top: 4px; color: var(--side-muted); }
+.sidebar-credit span { color: var(--side-ink); }
+.sidebar-credit:hover { color: var(--side-ink); }

@@ -12,7 +12,7 @@ import { Reports } from './Reports';
 import { ReviewsPage } from './ReviewsPage';
 import { Tabs } from './Tabs';
 import { GalleryImage, InvoiceDraft, InvoiceSummary, Menu, Notify, Session, View } from './types';
-import { Icon, Toast, Toasts } from './ui';
+import { BuiltBy, Icon, Toast, Toasts } from './ui';
 import logoUrl from './logo.png';
 
 const views: { id: View; label: string; title: string; subtitle: string; icon: string }[] = [
@@ -258,6 +258,7 @@ export function App() {
             <div><b>Secure session</b><small>{remaining !== null ? `Locks in ${duration(remaining)} if idle` : 'Active'} · stays open while you work</small></div>
           </div>
           <button type="button" className="signout" onClick={signOut}><Icon name="logout" size={16} />Sign out</button>
+          <BuiltBy className="sidebar-credit" />
         </div>
       </aside>
 

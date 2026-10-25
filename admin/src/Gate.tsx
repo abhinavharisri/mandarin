@@ -1,4 +1,4 @@
-import { Icon } from './ui';
+import { BuiltBy, Icon } from './ui';
 import logoUrl from './logo.png';
 
 export type GateMode = 'in' | 'out';
@@ -42,6 +42,7 @@ export function Gate({ mode, leaving }: { mode: GateMode; leaving: boolean }) {
         </ul>
         <div className="gate-progress" aria-hidden="true"><span /></div>
       </div>
+      <BuiltBy className="gate-credit" />
     </div>
   );
 }
