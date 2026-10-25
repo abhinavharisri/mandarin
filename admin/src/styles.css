@@ -944,12 +944,16 @@ td.actions .icon-button { margin-left: 4px; vertical-align: middle; }
 }
 
 /* Studio credit */
-.built-by { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); font-size: 10.5px; letter-spacing: .5px; text-decoration: none; opacity: .75; transition: opacity .2s, color .2s; }
-.built-by svg { width: 13px; height: 13px; flex: none; }
-.built-by span { color: var(--ink-2); font-weight: 500; }
-.built-by:hover { opacity: 1; color: var(--ink-2); }
+.built-by { display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 13px; letter-spacing: .4px; text-decoration: none; transition: color .2s; }
+.built-by svg { width: 20px; height: 20px; flex: none; }
+.built-by span { color: var(--ink); font-weight: 600; }
+.built-by:hover, .built-by:hover span { color: var(--gold-ink); }
+.built-by svg { overflow: visible; }
+.hd-dot { transform-box: fill-box; transform-origin: center; animation: hd-blink 1.4s ease-in-out infinite; }
+@keyframes hd-blink { 0%, 100% { opacity: 1; transform: scale(2.2); } 50% { opacity: .2; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .hd-dot { animation: none; } }
 .auth-credit { position: absolute; bottom: 22px; left: 0; right: 0; width: fit-content; margin: 0 auto; white-space: nowrap; }
 .gate-credit { position: absolute; bottom: 28px; left: 0; right: 0; width: fit-content; margin: 0 auto; white-space: nowrap; animation: rise .7s .4s var(--ease-out) both; }
-.sidebar-credit { padding-top: 4px; color: var(--side-muted); }
+.sidebar-credit { padding-top: 6px; color: var(--side-muted); font-size: 12.5px; }
 .sidebar-credit span { color: var(--side-ink); }
-.sidebar-credit:hover { color: var(--side-ink); }
+.sidebar-credit:hover, .sidebar-credit:hover span { color: var(--side-accent); }

@@ -1731,22 +1731,26 @@ body:has(button:hover) .cursor-outer {
 .footer-credit {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  color: rgba(255,255,255,0.3);
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
   letter-spacing: 1px;
   transition: color var(--t-fast);
 }
 .footer-credit svg {
-  width: 16px;
-  height: 16px;
-  color: rgba(255,255,255,0.55);
+  width: 22px;
+  height: 22px;
+  color: rgba(255,255,255,0.7);
   flex: none;
 }
-.footer-credit span { color: rgba(255,255,255,0.55); }
+.footer-credit span { color: var(--white); font-weight: 500; }
 .footer-credit:hover,
 .footer-credit:hover span,
-.footer-credit:hover svg { color: var(--white); }
+.footer-credit:hover svg { color: var(--gold); }
+.footer-credit svg { overflow: visible; }
+.hd-dot { transform-box: fill-box; transform-origin: center; animation: hd-blink 1.4s ease-in-out infinite; }
+@keyframes hd-blink { 0%, 100% { opacity: 1; transform: scale(2.2); } 50% { opacity: 0.2; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .hd-dot { animation: none; } }
 
 /* ===== WhatsApp FAB ===== */
 .whatsapp-fab {

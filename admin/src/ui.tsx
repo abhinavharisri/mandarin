@@ -96,7 +96,7 @@ export function BuiltBy({ className = '' }: { className?: string }) {
       <svg viewBox="0 0 96 96" aria-hidden="true">
         <defs><pattern id={pattern} width="10" height="10" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill="currentColor" /></pattern></defs>
         <rect width="96" height="96" fill={`url(#${pattern})`} />
-        <rect x="90" y="90" width="6" height="6" fill="#FF4A1C" />
+        <rect className="hd-dot" x="90" y="90" width="6" height="6" fill="#FF4A1C" />
       </svg>
       <span>hundrd studio</span>
     </a>
